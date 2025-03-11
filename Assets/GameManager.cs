@@ -115,6 +115,64 @@ public class GameManager : MonoBehaviour
         }
     }
 
+    public void RealignPlayerCards()
+{
+    int cardCount = playerCards.childCount;
+    if (cardCount == 0) return;
+
+    float spacing = 2.2f/(cardCount);
+    float startX = -((cardCount - 1) * spacing) / 2; // Center cards
+
+    for (int i = 0; i < cardCount; i++)
+    {
+        Transform cardTransform = playerCards.GetChild(i);
+        cardTransform.localPosition = new Vector3(startX + (i * spacing), 0, 0);
+        
+        // Ensure correct order of cards visually (leftmost is lowest)
+        SpriteRenderer spriteRenderer = cardTransform.GetComponent<SpriteRenderer>();
+        if (spriteRenderer != null)
+        {
+            spriteRenderer.sortingOrder = i;
+        }
+    }
+}
+    
+    public void DrawCard()
+    {
+        if (drawPile.childCount > 0) // Ensure there are cards left to draw
+        {
+            Transform drawnCard = drawPile.GetChild(0); // Get the top card
+            drawnCard.SetParent(playerCards); // Move it to the player's hand
+
+            // Update card position and visibility
+            RealignPlayerCards();
+
+            // Reveal the correct front sprite
+            Card cardScript = drawnCard.GetComponent<Card>();
+            if (cardScript != null)
+            {
+                string spriteName = GetSpriteName(cardScript.color, cardScript.type, cardScript.number);
+                if (cardSprites.ContainsKey(spriteName))
+                {
+                    SpriteRenderer spriteRenderer = drawnCard.GetComponent<SpriteRenderer>();
+                    if (spriteRenderer != null)
+                    {
+                        spriteRenderer.sprite = cardSprites[spriteName]; // Show the correct front sprite
+                    }
+                }
+                else
+                {
+                    Debug.LogError($"Sprite not found: {spriteName}");
+                }
+            }
+        }
+        else
+        {
+            Debug.Log("No more cards left in the draw pile!");
+        }
+    }
+
+
 
 
 }
