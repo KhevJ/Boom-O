@@ -35,6 +35,8 @@ public class GameManager : MonoBehaviour
 
         // Adding deck to server
         SendDeck();
+        
+        SendPlayerCards();
 
 
     }
@@ -42,7 +44,7 @@ public class GameManager : MonoBehaviour
     [System.Serializable]
     public class DeckData
     {
-        public string action = "sendDeck"; // Define the action type
+        public string action = "sendDeck"; 
         public List<string> cards; // COnvert Sprite Name to string
     }
     void SendDeck()
@@ -62,7 +64,33 @@ public class GameManager : MonoBehaviour
         webSocket.SendText(jsonData);
     }
 
-    
+    [System.Serializable]
+    public class PlayerCardsData
+    {
+        public string action = "sendPlayerCards"; 
+        public List<string> cards;
+    }
+
+    void SendPlayerCards()
+    {
+        PlayerCardsData playerCardsData = new PlayerCardsData();
+        playerCardsData.cards = new List<string>();
+
+        foreach (Transform cardTransform in playerCards)
+        {
+            Card cardScript = cardTransform.GetComponent<Card>();
+            if (cardScript != null)
+            {
+                string spriteName = GetSpriteName(cardScript.color, cardScript.type, cardScript.number);
+                playerCardsData.cards.Add(spriteName);
+            }
+        }
+
+        string jsonData = JsonUtility.ToJson(playerCardsData);
+        Debug.Log("Sending player cards to server: " + jsonData);
+
+        webSocket.SendText(jsonData);
+    }
 
     void LoadCardSprites()
     {

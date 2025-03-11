@@ -20,7 +20,13 @@ server.on("connection", (socket) => {
 
         if (data.action === "sendDeck") {
             console.log("Received deck from player:", data.cards);
-            gameObjects[cards] = data.cards;
+            gameObjects[deck] = data.cards;
+
+        }
+
+        if (data.action === "sendPlayerCards") {
+            console.log("Received player cards from player:", data.cards);
+            gameObjects[playerCards] = data.cards;
 
         }
     });
