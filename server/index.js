@@ -1,7 +1,8 @@
 const WebSocket = require("ws");
 //socket.io and websocket 
 const server = new WebSocket.Server({ port: 3000 });
-
+const gameObjects = {} //not sure why I am doing this but it should work
+ 
 server.on("connection", (socket) => {
     console.log("A user connected");
 
@@ -16,6 +17,12 @@ server.on("connection", (socket) => {
         if (parsedData.action === "drawCard") {
             socket.send(JSON.stringify({ action: "cardDrawn", message: "You drew a card!" }));
         }
+
+        // if (data.action === "sendDeck") {
+        //     console.log("Received deck from player:", data.cards);
+        //     gameObjects[cards] = data.cards;
+
+        // }
     });
 
     socket.on("close", () => {
