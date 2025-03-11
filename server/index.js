@@ -18,11 +18,11 @@ server.on("connection", (socket) => {
             socket.send(JSON.stringify({ action: "cardDrawn", message: "You drew a card!" }));
         }
 
-        // if (data.action === "sendDeck") {
-        //     console.log("Received deck from player:", data.cards);
-        //     gameObjects[cards] = data.cards;
+        if (data.action === "sendDeck") {
+            console.log("Received deck from player:", data.cards);
+            gameObjects[cards] = data.cards;
 
-        // }
+        }
     });
 
     socket.on("close", () => {
