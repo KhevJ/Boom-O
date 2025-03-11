@@ -8,6 +8,8 @@ public class DragDrop : MonoBehaviour
     private Vector3 startposition;
     public Transform discardPile;
     public GameManager gameManager;
+
+    int order = 0;
     
     void Start(){
         discardPile = GameObject.Find("DiscardPile").transform;
@@ -33,15 +35,25 @@ public class DragDrop : MonoBehaviour
     }
 
     private void OnMouseUp(){
-        float distance = Vector3.Distance(transform.position, discardPile.position);
-        if(distance<0.6f){
-            transform.SetParent(discardPile);
-            transform.localPosition = Vector3.zero;
-            gameManager.RealignPlayerCards();
+        if(transform.parent.name=="PlayerCards"){
+            float distance = Vector3.Distance(transform.position, discardPile.position);
+            if(distance<0.6f){
+                transform.SetParent(discardPile);
+                transform.localPosition = Vector3.zero;
+                SpriteRenderer spriteRenderer = GetComponent<SpriteRenderer>();
+                if (spriteRenderer != null)
+                {
+                    // Set the sorting order to the number of cards in the discard pile
+                    spriteRenderer.sortingOrder = discardPile.childCount;
+                }
+                
+                gameManager.RealignPlayerCards();
+            }
+            else{
+                transform.position = startposition;
+            }
         }
-        else{
-            transform.position = startposition;
-        }
+        
 
     }
 
