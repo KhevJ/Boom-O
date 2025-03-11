@@ -116,26 +116,26 @@ public class GameManager : MonoBehaviour
     }
 
     public void RealignPlayerCards()
-{
-    int cardCount = playerCards.childCount;
-    if (cardCount == 0) return;
-
-    float spacing = 2.2f/(cardCount);
-    float startX = -((cardCount - 1) * spacing) / 2; // Center cards
-
-    for (int i = 0; i < cardCount; i++)
     {
-        Transform cardTransform = playerCards.GetChild(i);
-        cardTransform.localPosition = new Vector3(startX + (i * spacing), 0, 0);
-        
-        // Ensure correct order of cards visually (leftmost is lowest)
-        SpriteRenderer spriteRenderer = cardTransform.GetComponent<SpriteRenderer>();
-        if (spriteRenderer != null)
+        int cardCount = playerCards.childCount;
+        if (cardCount == 0) return;
+
+        float spacing = Mathf.Min(0.3f,2.2f/(cardCount));
+        float startX = -((cardCount - 1) * spacing) / 2; // Center cards
+
+        for (int i = 0; i < cardCount; i++)
         {
-            spriteRenderer.sortingOrder = i;
+            Transform cardTransform = playerCards.GetChild(i);
+            cardTransform.localPosition = new Vector3(startX + (i * spacing), 0, 0);
+            
+            // Ensure correct order of cards visually (leftmost is lowest)
+            SpriteRenderer spriteRenderer = cardTransform.GetComponent<SpriteRenderer>();
+            if (spriteRenderer != null)
+            {
+                spriteRenderer.sortingOrder = i;
+            }
         }
     }
-}
     
     public void DrawCard()
     {
