@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using NativeWebSocket;
+using System.Threading.Tasks;
 
 public class GameManager : MonoBehaviour
 {
@@ -15,31 +16,32 @@ public class GameManager : MonoBehaviour
 
     // WebSocket
     private WebSocket webSocket;
-    private string serverUrl = "ws://localhost:3000"; // Change to your server's WebSocket URL
+    private string serverUrl = "ws://localhost:3000"; // Gotta change to maybe an array of links for replication
 
-    [System.Serializable] // This allows JsonUtility to parse it
+    [System.Serializable] 
     public class ServerResponse
     {
-        public string action; // Matches "action" field from JSON
-        public string message; // Matches "message" field from JSON (if applicable)
+        public string action; 
+        public string message;
     }
 
-    void Start()
+   void Start()
     {
-        // Initialize WebSocket
-        InitializeWebSocket(); // Remember this is an async function man 
+         // Ensure WebSocket initializes first
+        
+        
+
+        //InitializeWebSocket();
+        StartCoroutine(InitializeWebSocketCoroutine());
         LoadCardSprites();
         InitializeDeck();
         ShuffleDeck();
         DealCards();
 
-        // Adding deck to server
         SendDeck();
-        
         SendPlayerCards();
-
-
     }
+
 
     [System.Serializable]
     public class DeckData
@@ -263,44 +265,44 @@ public class GameManager : MonoBehaviour
         }
     }
 
-    // Initialize WebSocket
-    async void InitializeWebSocket()
+    
+    IEnumerator InitializeWebSocketCoroutine()
+{
+    webSocket = new WebSocket(serverUrl);
+
+    bool connected = false;
+
+    webSocket.OnOpen += () =>
     {
-        webSocket = new WebSocket(serverUrl);
+        Debug.Log("Connected to WebSocket server!");
+        SendConnectionMessage();
+        connected = true;
+    };
 
-        // On Open
-        webSocket.OnOpen += () =>
-        {
-            Debug.Log("Connected to WebSocket server!");
-            SendConnectionMessage(); // Send a message when connected
-        };
+    webSocket.OnError += (error) =>
+    {
+        Debug.LogError("WebSocket error: " + error);
+    };
 
-        // On Message received
-        webSocket.OnMessage += (bytes) =>
-        {
-            string message = System.Text.Encoding.UTF8.GetString(bytes);
-            Debug.Log("Message received from server: " + message);
+    webSocket.OnClose += (e) =>
+    {
+        Debug.Log("WebSocket closed!");
+    };
 
-            // You can handle different responses here
-            // For example, if the server sends a draw card response
-            HandleServerResponse(message);
-        };
+    webSocket.OnMessage += (bytes) =>
+    {
+        string message = System.Text.Encoding.UTF8.GetString(bytes);
+        Debug.Log("Message from server: " + message);
+        HandleServerResponse(message);
+    };
 
-        // On Close
-        webSocket.OnClose += (e) =>
-        {
-            Debug.Log("Connection closed!");
-        };
+    webSocket.Connect(); // No await needed
 
-        // On Error
-        webSocket.OnError += (error) =>
-        {
-            Debug.LogError("WebSocket error: " + error);
-        };
-
-        // Start the WebSocket connection
-        await webSocket.Connect();
+    while (!connected)
+    {
+        yield return null; // Wait until connected
     }
+}
 
     // Send a message when a player connects to the server
     void SendConnectionMessage()
@@ -346,6 +348,16 @@ public class GameManager : MonoBehaviour
         if (response.action == "cardDrawn")
         {
             Debug.Log("Server responded: Card drawn successfully!");
+
+        }
+        if (response.action == "deckSaved")
+        {
+            Debug.Log("Server responded: Deck Saved successfully!");
+
+        }
+        if (response.action == "playerCardsSaved")
+        {
+            Debug.Log("Server responded: PlayerCards Saved successfully!");
 
         }
         else if (response.action == "error")
