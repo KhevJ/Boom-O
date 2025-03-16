@@ -16,23 +16,33 @@ public class GameManager : MonoBehaviour
 
     // WebSocket
     private WebSocket webSocket;
+    public bool connected = false;
     private string serverUrl = "ws://localhost:3000"; // Gotta change to maybe an array of links for replication
 
-    [System.Serializable] 
+    [System.Serializable]
     public class ServerResponse
     {
-        public string action; 
+        public string action;
         public string message;
     }
 
-   void Start()
+    void Start()
     {
-         // Ensure WebSocket initializes first
-        
-        
+        // Ensure WebSocket initializes first
+
+
 
         //InitializeWebSocket();
-        StartCoroutine(InitializeWebSocketCoroutine());
+        StartCoroutine(InitializeGame());
+
+
+
+    }
+
+    IEnumerator InitializeGame()
+    {
+        yield return StartCoroutine(InitializeWebSocketCoroutine()); // Wait for connection
+
         LoadCardSprites();
         InitializeDeck();
         ShuffleDeck();
@@ -42,17 +52,17 @@ public class GameManager : MonoBehaviour
         SendPlayerCards();
     }
 
-
     [System.Serializable]
     public class DeckData
     {
-        public string action = "sendDeck"; 
+        public string action = "sendDeck";
         public List<string> cards; // COnvert Sprite Name to string
     }
     void SendDeck()
     {
         DeckData deckData = new DeckData();
         deckData.cards = new List<string>();
+
 
         foreach (Card card in deck)
         {
@@ -69,7 +79,7 @@ public class GameManager : MonoBehaviour
     [System.Serializable]
     public class PlayerCardsData
     {
-        public string action = "sendPlayerCards"; 
+        public string action = "sendPlayerCards";
         public List<string> cards;
     }
 
@@ -265,44 +275,47 @@ public class GameManager : MonoBehaviour
         }
     }
 
-    
+
     IEnumerator InitializeWebSocketCoroutine()
-{
-    webSocket = new WebSocket(serverUrl);
-
-    bool connected = false;
-
-    webSocket.OnOpen += () =>
     {
-        Debug.Log("Connected to WebSocket server!");
-        SendConnectionMessage();
-        connected = true;
-    };
+        webSocket = new WebSocket(serverUrl);
 
-    webSocket.OnError += (error) =>
-    {
-        Debug.LogError("WebSocket error: " + error);
-    };
+        connected = false;
 
-    webSocket.OnClose += (e) =>
-    {
-        Debug.Log("WebSocket closed!");
-    };
+        webSocket.OnOpen += () =>
+        {
+            Debug.Log("Connected to WebSocket server!");
+            SendConnectionMessage();
+            connected = true;
 
-    webSocket.OnMessage += (bytes) =>
-    {
-        string message = System.Text.Encoding.UTF8.GetString(bytes);
-        Debug.Log("Message from server: " + message);
-        HandleServerResponse(message);
-    };
+        };
 
-    webSocket.Connect(); // No await needed
+        webSocket.OnError += (error) =>
+        {
+            Debug.LogError("WebSocket error: " + error);
+        };
 
-    while (!connected)
-    {
-        yield return null; // Wait until connected
+        webSocket.OnClose += (e) =>
+        {
+            Debug.Log("WebSocket closed!");
+        };
+
+        webSocket.OnMessage += (bytes) =>
+        {
+            string message = System.Text.Encoding.UTF8.GetString(bytes);
+            Debug.Log("Message from server: " + message);
+            HandleServerResponse(message);
+        };
+
+        webSocket.Connect(); // No await needed
+        SendDeck();
+        SendPlayerCards();
+
+        while (!connected)
+        {
+            yield return null; // Wait until connected
+        }
     }
-}
 
     // Send a message when a player connects to the server
     void SendConnectionMessage()
