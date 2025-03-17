@@ -1,7 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using NativeWebSocket;
+// using NativeWebSocket;
 using System.Threading.Tasks;
 
 public class GameManager : MonoBehaviour
@@ -15,33 +15,26 @@ public class GameManager : MonoBehaviour
     public Sprite cardBackSprite;
 
     // WebSocket
-    private WebSocket webSocket;
-    public bool connected = false;
-    private string serverUrl = "ws://localhost:3000"; // Gotta change to maybe an array of links for replication
+    // private WebSocket webSocket;
+    // public bool connected = false;
+    // private string serverUrl = "ws://localhost:3000"; // Gotta change to maybe an array of links for replication
 
-    [System.Serializable]
-    public class ServerResponse
-    {
-        public string action;
-        public string message;
-    }
+    
 
     void Start()
     {
-        // Ensure WebSocket initializes first
-
-
-
-        //InitializeWebSocket();
-        StartCoroutine(InitializeGame());
         
-
-
+        StartCoroutine(InitializeGame());
     }
 
     IEnumerator InitializeGame()
     {
-        yield return StartCoroutine(InitializeWebSocketCoroutine()); // Wait for connection
+        //yield return StartCoroutine(InitializeWebSocketCoroutine()); 
+        while (WebSocketManager.Instance == null || !WebSocketManager.Instance.connected)
+        {
+            //Debug.Log("Heelo in whiel loop");
+            yield return null; // wait till connection is made
+        }
 
         LoadCardSprites();
         InitializeDeck();
@@ -73,7 +66,7 @@ public class GameManager : MonoBehaviour
         string jsonData = JsonUtility.ToJson(deckData);
         Debug.Log("Sending deck to server: " + jsonData);
 
-        webSocket.SendText(jsonData);
+        WebSocketManager.Instance.SendText(jsonData);
     }
 
     [System.Serializable]
@@ -101,7 +94,7 @@ public class GameManager : MonoBehaviour
         string jsonData = JsonUtility.ToJson(playerCardsData);
         Debug.Log("Sending player cards to server: " + jsonData);
 
-        webSocket.SendText(jsonData);
+        WebSocketManager.Instance.SendText(jsonData);
     }
 
     void LoadCardSprites()
@@ -276,46 +269,46 @@ public class GameManager : MonoBehaviour
     }
 
 
-    IEnumerator InitializeWebSocketCoroutine()
-    {
-        webSocket = new WebSocket(serverUrl);
+    // IEnumerator InitializeWebSocketCoroutine()
+    // {
+    //     webSocket = new WebSocket(serverUrl);
 
-        connected = false;
+    //     connected = false;
 
-        webSocket.OnOpen += () =>
-        {
-            Debug.Log("Connected to WebSocket server!");
-            SendConnectionMessage();
-            connected = true;
+    //     webSocket.OnOpen += () =>
+    //     {
+    //         Debug.Log("Connected to WebSocket server!");
+    //         SendConnectionMessage();
+    //         connected = true;
 
-        };
+    //     };
 
-        webSocket.OnError += (error) =>
-        {
-            Debug.LogError("WebSocket error: " + error);
-        };
+    //     webSocket.OnError += (error) =>
+    //     {
+    //         Debug.LogError("WebSocket error: " + error);
+    //     };
 
-        webSocket.OnClose += (e) =>
-        {
-            Debug.Log("WebSocket closed!");
-        };
+    //     webSocket.OnClose += (e) =>
+    //     {
+    //         Debug.Log("WebSocket closed!");
+    //     };
 
-        webSocket.OnMessage += (bytes) =>
-        {
-            string message = System.Text.Encoding.UTF8.GetString(bytes);
-            Debug.Log("Message from server: " + message);
-            HandleServerResponse(message);
-        };
+    //     webSocket.OnMessage += (bytes) =>
+    //     {
+    //         string message = System.Text.Encoding.UTF8.GetString(bytes);
+    //         Debug.Log("Message from server: " + message);
+    //         HandleServerResponse(message);
+    //     };
 
-        webSocket.Connect(); // No await needed
-        SendDeck();
-        SendPlayerCards();
+    //     webSocket.Connect(); // No await needed
+    //     // SendDeck();
+    //     // SendPlayerCards();
 
-        while (!connected)
-        {
-            yield return null; // Wait until connected
-        }
-    }
+    //     while (!connected)
+    //     {
+    //         yield return null; // Wait until connected
+    //     }
+    // }
 
     // Send a message when a player connects to the server
     void SendConnectionMessage()
@@ -323,11 +316,11 @@ public class GameManager : MonoBehaviour
         var connectionData = new
         {
             action = "connect",
-            playerName = "Player1"
+            playerName = "Khevin The Goat"
         };
         Debug.Log("sending connection: " + connectionData);
         string jsonData = JsonUtility.ToJson(connectionData);
-        webSocket.SendText(jsonData);
+        WebSocketManager.Instance.SendText(jsonData);
     }
 
 
@@ -349,61 +342,62 @@ public class GameManager : MonoBehaviour
         };
         Debug.Log("sending draw: " + drawCardData);
         string jsonData = JsonUtility.ToJson(drawCardData);
-        webSocket.SendText(jsonData);
+        WebSocketManager.Instance.SendText(jsonData);
     }
 
-    // Handle server response
-    void HandleServerResponse(string message)
-    {
+    // // Handle server response
+    // void HandleServerResponse(string message)
+    // {
 
-        var response = JsonUtility.FromJson<ServerResponse>(message);
+    //     var response = JsonUtility.FromJson<ServerResponse>(message);
 
-        if (response.action == "cardDrawn")
-        {
-            Debug.Log("Server responded: Card drawn successfully!");
+    //     if (response.action == "cardDrawn")
+    //     {
+    //         Debug.Log("Server responded: Card drawn successfully!");
 
-        }
-        if (response.action == "deckSaved")
-        {
-            Debug.Log("Server responded: Deck Saved successfully!");
+    //     }
+    //     if (response.action == "deckSaved")
+    //     {
+    //         Debug.Log("Server responded: Deck Saved successfully!");
 
-        }
-        if (response.action == "playerCardsSaved")
-        {
-            Debug.Log("Server responded: PlayerCards Saved successfully!");
+    //     }
+    //     if (response.action == "playerCardsSaved")
+    //     {
+    //         Debug.Log("Server responded: PlayerCards Saved successfully!");
 
-        }
-        else if (response.action == "error")
-        {
-            Debug.LogError("Error from server: " + response.message);
-        }
-    }
+    //     }
+    //     else if (response.action == "error")
+    //     {
+    //         Debug.LogError("Error from server: " + response.message);
+    //     }
+    // }
 
     // Coroutine to keep the WebSocket connection alive
-    IEnumerator WebSocketConnect()
-    {
+    // IEnumerator WebSocketConnect()
+    // {
 
-        while (webSocket.State != WebSocketState.Open)
-        {
-            yield return null;
-        }
+    //     while (webSocket.State != WebSocketState.Open)
+    //     {
+    //         yield return null;
+    //     }
 
-        Debug.Log("WebSocket is open and connected.");
-    }
+    //     Debug.Log("WebSocket is open and connected.");
+    // }
 
 
-    void Update()
-    {
-        if (webSocket != null)
-        {
-            webSocket.DispatchMessageQueue();
-        }
-    }
+    // void Update()
+    // {
+    //     if (webSocket != null)
+    //     {
+    //         webSocket.DispatchMessageQueue();
+    //     }
+    // }
 
     // Close WebSocket when the application quits
-    private async void OnApplicationQuit()
+    private  void OnApplicationQuit()
     {
-        await webSocket.Close();
+        // will be recovering logic
+        
     }
 
 }
