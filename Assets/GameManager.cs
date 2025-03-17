@@ -301,12 +301,32 @@ public class GameManager : MonoBehaviour
     //Game Logic
     public bool CanPlaceCard(Card card)
     {
-        // Wild cards are always playable
+        Debug.Log($"Checking card placement: {card.color} {card.type} on {topCard.color} {topCard.type}");
+
+        // Wild cards can always be played
         if (card.type == Card.CardType.Wild || card.type == Card.CardType.WildDraw)
         {
             return true;
         }
-        return card.color == topCard.color || card.number == topCard.number;
+
+        // Number cards must match either color or number
+        if (card.type == Card.CardType.Number && topCard.type == Card.CardType.Number)
+        {
+            return card.color == topCard.color || card.number == topCard.number;
+        }
+
+        // Action cards (Skip, Reverse, Draw) must match BOTH color AND type
+        if (card.type != Card.CardType.Number && topCard.type != Card.CardType.Number)
+        {
+            bool validMove = (card.type == topCard.type) || (card.color == topCard.color);
+            Debug.Log($"Action card move valid: {validMove}");
+            return validMove;
+        }
+
+        // General case: allow only color matches
+        bool validColorMatch = card.color == topCard.color;
+        Debug.Log($"Color match valid: {validColorMatch}");
+        return validColorMatch;
     }
 
     public void UpdateTopCard(Card newTopCard)
