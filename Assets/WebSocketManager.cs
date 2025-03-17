@@ -141,7 +141,7 @@ using System.Collections.Generic;
 using SocketIOClient;
 using SocketIOClient.Newtonsoft.Json;
 using UnityEngine;
-using Newtonsoft.Json.Linq;
+// using Newtonsoft.Json.Linq;
 
 
 
@@ -154,7 +154,7 @@ public class WebSocketManager : MonoBehaviour
 
     private SocketIOUnity socket;
     public bool connected = false;
-    private string serverUrl = "http://localhost:3000";
+    private readonly string serverUrl = "http://localhost:3000";
 
     void Awake()
     {
@@ -196,6 +196,7 @@ public class WebSocketManager : MonoBehaviour
         socket.OnConnected += (sender, e) =>
         {
             connected = true;
+            SendConnectionMessage();
             Debug.Log("socket.OnConnected" + e);
         };
         socket.OnPing += (sender, e) =>
@@ -252,12 +253,12 @@ public class WebSocketManager : MonoBehaviour
 
     public void SendText(string action, object data)
     {
-        Debug.Log(data);
-        Debug.Log(action);
+        // Debug.Log(data);
+        // Debug.Log(action);
         //string jsonData = JsonUtility.ToJson(data);
         if (socket != null && connected)
         {
-            socket.Emit("drawCard", "world");
+            socket.EmitAsync("drawCard", "world");
         }
         else
         {
@@ -272,8 +273,7 @@ public class WebSocketManager : MonoBehaviour
             action = "connect",
             playerName = "Khevin The Goat"
         };
-        Debug.Log("Hello connection");
-        SendText("connect", connectionData.playerName);
+        SendText("connect", "Khevin The Goat");
     }
 
     private void OnApplicationQuit()
