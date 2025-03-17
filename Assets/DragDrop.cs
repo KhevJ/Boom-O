@@ -53,6 +53,11 @@ public class DragDrop : MonoBehaviour
 
                     gameManager.UpdateTopCard(currentCard);
                     gameManager.RealignPlayerCards();
+
+                    if (currentCard.type == Card.CardType.Wild || currentCard.type == Card.CardType.WildDraw)
+                    {
+                        gameManager.colorPickerUI.SetActive(true); // Show color selection UI
+                    }
                 }
                 else
                 {

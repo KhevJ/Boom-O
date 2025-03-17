@@ -17,6 +17,7 @@ public class GameManager : MonoBehaviour
     //Used for Game logic
     public Card topCard;
     public Transform discardPile;
+    public GameObject colorPickerUI;
 
     // WebSocket
     private WebSocket webSocket;
@@ -61,6 +62,10 @@ public class GameManager : MonoBehaviour
     {
         public string action = "sendDeck";
         public List<string> cards; // COnvert Sprite Name to string
+    }
+    public void TestButton()
+    {
+        Debug.Log("Button Clicked!");
     }
     void SendDeck()
     {
@@ -309,6 +314,22 @@ public class GameManager : MonoBehaviour
         topCard = newTopCard;
     }
 
+    public void ChooseRed() { SetWildColor(Card.CardColor.Red); }
+    public void ChooseBlue() { SetWildColor(Card.CardColor.Blue); }
+    public void ChooseGreen() { SetWildColor(Card.CardColor.Green); }
+    public void ChooseYellow() { SetWildColor(Card.CardColor.Yellow); }
+    public void SetWildColor(Card.CardColor chosenColor)
+    {
+        Debug.Log("Wild card color chosen: " + chosenColor);
+
+        // Set the chosen color for the wild card
+        topCard.color = chosenColor;
+
+        // This is the key fix: Change the type to allow normal cards
+        topCard.type = Card.CardType.Number;
+
+        colorPickerUI.SetActive(false); // Hide color picker UI
+    }
 
     IEnumerator InitializeWebSocketCoroutine()
     {
