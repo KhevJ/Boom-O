@@ -37,20 +37,28 @@ public class DragDrop : MonoBehaviour
     private void OnMouseUp(){
         if(transform.parent.name=="PlayerCards"){
             float distance = Vector3.Distance(transform.position, discardPile.position);
-            if(distance<0.6f){
-                transform.SetParent(discardPile);
-                transform.localPosition = Vector3.zero;
-                SpriteRenderer spriteRenderer = GetComponent<SpriteRenderer>();
-                if (spriteRenderer != null)
+            if (distance < 0.6f)
+            {
+                Card currentCard = GetComponent<Card>();
+                if (gameManager.CanPlaceCard(currentCard))
                 {
-                    // Set the sorting order to the number of cards in the discard pile
-                    spriteRenderer.sortingOrder = discardPile.childCount;
+                    transform.SetParent(discardPile);
+                    transform.localPosition = Vector3.zero;
+
+                    SpriteRenderer spriteRenderer = GetComponent<SpriteRenderer>();
+                    if (spriteRenderer != null)
+                    {
+                        spriteRenderer.sortingOrder = discardPile.childCount;
+                    }
+
+                    gameManager.UpdateTopCard(currentCard);
+                    gameManager.RealignPlayerCards();
                 }
-                
-                gameManager.RealignPlayerCards();
-            }
-            else{
-                transform.position = startposition;
+                else
+                {
+                    Debug.Log("Invalid move! Card must match color or number.");
+                    transform.position = startposition;
+                }
             }
         }
         

@@ -14,6 +14,10 @@ public class GameManager : MonoBehaviour
     private Dictionary<string, Sprite> cardSprites;
     public Sprite cardBackSprite;
 
+    //Used for Game logic
+    public Card topCard;
+    public Transform discardPile;
+
     // WebSocket
     private WebSocket webSocket;
     public bool connected = false;
@@ -167,8 +171,21 @@ public class GameManager : MonoBehaviour
 
     void DealCards()
     {
+        
         float spacing = 0.3f;
         float startX = -((7 - 1) * spacing) / 2;
+
+        // Set the first card in discard pile
+        topCard = deck[0];
+        deck.RemoveAt(0);
+        //if (topCard == null)
+        //{
+        //    Debug.LogError("Error: The first card in the deck is null.");
+        //    return; // Prevents further execution if there's an issue
+        //}
+        topCard.transform.SetParent(discardPile);
+        topCard.transform.localPosition = Vector3.zero;
+        topCard.gameObject.SetActive(true);
         for (int i = 0; i < 7; i++)
         {
             Card card = deck[0];
@@ -196,6 +213,7 @@ public class GameManager : MonoBehaviour
             }
             card.gameObject.SetActive(true);
         }
+        
     }
 
     string GetSpriteName(Card.CardColor color, Card.CardType type, int number)
@@ -273,6 +291,22 @@ public class GameManager : MonoBehaviour
         {
             Debug.Log("No more cards left in the draw pile!");
         }
+    }
+
+    //Game Logic
+    public bool CanPlaceCard(Card card)
+    {
+        // Wild cards are always playable
+        if (card.type == Card.CardType.Wild || card.type == Card.CardType.WildDraw)
+        {
+            return true;
+        }
+        return card.color == topCard.color || card.number == topCard.number;
+    }
+
+    public void UpdateTopCard(Card newTopCard)
+    {
+        topCard = newTopCard;
     }
 
 
