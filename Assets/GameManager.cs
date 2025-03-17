@@ -66,7 +66,7 @@ public class GameManager : MonoBehaviour
         string jsonData = JsonUtility.ToJson(deckData);
         Debug.Log("Sending deck to server: " + jsonData);
 
-        WebSocketManager.Instance.SendText(jsonData);
+        WebSocketManager.Instance.SendText("sendDeck", deckData.cards);
     }
 
     [System.Serializable]
@@ -94,7 +94,7 @@ public class GameManager : MonoBehaviour
         string jsonData = JsonUtility.ToJson(playerCardsData);
         Debug.Log("Sending player cards to server: " + jsonData);
 
-        WebSocketManager.Instance.SendText(jsonData);
+        WebSocketManager.Instance.SendText("sendPlayerCardsData", playerCardsData.cards);
     }
 
     void LoadCardSprites()
@@ -311,17 +311,17 @@ public class GameManager : MonoBehaviour
     // }
 
     // Send a message when a player connects to the server
-    void SendConnectionMessage()
-    {
-        var connectionData = new
-        {
-            action = "connect",
-            playerName = "Khevin The Goat"
-        };
-        Debug.Log("sending connection: " + connectionData);
-        string jsonData = JsonUtility.ToJson(connectionData);
-        WebSocketManager.Instance.SendText(jsonData);
-    }
+    // void SendConnectionMessage()
+    // {
+    //     var connectionData = new
+    //     {
+    //         action = "connect",
+    //         playerName = "Khevin The Goat"
+    //     };
+    //     Debug.Log("sending connection: " + connectionData);
+    //     string jsonData = JsonUtility.ToJson(connectionData);
+    //     WebSocketManager.Instance.SendText("connect", "Khevin The Goat");
+    // }
 
 
 
@@ -342,7 +342,7 @@ public class GameManager : MonoBehaviour
         };
         Debug.Log("sending draw: " + drawCardData);
         string jsonData = JsonUtility.ToJson(drawCardData);
-        WebSocketManager.Instance.SendText(jsonData);
+        WebSocketManager.Instance.SendText("drawCard", drawCardData.playerName);
     }
 
     // // Handle server response

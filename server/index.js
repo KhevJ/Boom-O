@@ -1,33 +1,141 @@
-const WebSocket = require("ws");
+// const WebSocket = require("ws");
 
-const server = new WebSocket.Server({ port: 3000 });
-const gameObjects = {}; // store game state
-const messageQueue = []; // queue to process messages one at a time
-let isProcessing = false; // flag to track if a message is being processed
+// const server = new WebSocket.Server({ port: 3000 });
+// const gameObjects = {}; // store game state
+// const messageQueue = []; // queue to process messages one at a time
+// let isProcessing = false; // flag to track if a message is being processed
 
-server.on("connection", (socket) => {
+// server.on("connection", (socket) => {
+//     console.log("A user connected");
+
+//     // send a welcome message
+//     socket.send(JSON.stringify({ action: "connected", message: "Welcome to UNO Server!" }));
+
+//     socket.on("message", (data) => {
+//         const parsedData = JSON.parse(data);
+//         console.log("Received:", parsedData);
+
+//         // add message to the queue
+//         messageQueue.push({ socket, parsedData });
+
+//         // process queue if not already processing
+//         processQueue();
+//     });
+
+//     socket.on("close", () => {
+//         console.log("User disconnected");
+//     });
+// });
+
+// async function processQueue() {
+//     if (isProcessing || messageQueue.length === 0) {
+//         return;
+//     }
+
+//     isProcessing = true; // lock queue processing
+
+//     while (messageQueue.length > 0) {
+//         const { socket, parsedData } = messageQueue.shift(); // get the next message in queue
+
+//         console.log("Processing message:", parsedData.action);
+
+//         if (parsedData.action === 'drawCard') {
+//             await sendResponse(socket, { action: "cardDrawn", message: "You drew a card!" });
+//         } else if (parsedData.action === 'sendDeck') {
+//             console.log("Received deck:", parsedData.cards);
+//             gameObjects["deck"] = parsedData.cards;
+//             await sendResponse(socket, { action: "deckSaved", message: "Deck Saved!" });
+//         } else if (parsedData.action === 'sendPlayerCards') {
+//             console.log("Received player cards:", parsedData.cards);
+//             gameObjects["playerCards"] = parsedData.cards;
+//             await sendResponse(socket, { action: "playerCardsSaved", message: "Player Cards Saved!" });
+//         }
+//     }
+
+//     isProcessing = false; // unlock queue processing
+// }
+
+// // helper function to send response with a delay to simulate processing time
+// function sendResponse(socket, response) {
+//     return new Promise((resolve) => {
+//         setTimeout(() => {
+//             socket.send(JSON.stringify(response));
+//             resolve();
+//         }, 500); // simulate processing delay (adjust as needed)
+//     });
+// }
+
+// console.log("UNO Server running on port 3000");
+
+'use strict';
+
+const http = require('http');
+const socket = require('socket.io');
+const server = http.createServer();
+const port = 3000;
+
+var io = socket(server, {
+    pingInterval: 15000,
+    pingTimeout: 5000,
+    transports: ["websocket"]
+});
+
+io.use((socket, next) => {
+    if (socket.handshake.query.token === "UNITY") {
+        next();
+    } else {
+        next(new Error("Authentication error"));
+    }
+});
+// server.use((socket, next) => {
+//     if (socket.handshake.query.token === "UNITY") {
+//         next();
+//     } else {
+//         next(new Error("Authentication error"));
+//     }
+// });
+
+// io.on('connection', socket => {
+//   socket.emit('connection', {date: new Date().getTime(), data: "Hello Unity"})
+
+//   socket.on('hello', (data) => {
+//     socket.emit('hello', {date: new Date().getTime(), data: data});
+//   });
+
+//   socket.on('spin', (data) => {
+//     socket.emit('spin', {date: new Date().getTime()});
+//   });
+
+//   socket.on('class', (data) => {
+//     socket.emit('class', {date: new Date().getTime(), data: data});
+//   });
+// });
+
+
+
+
+const messageQueue = []; // queue to process messages in order
+let isProcessing = false;
+
+io.on("connection", (socket) => {
     console.log("A user connected");
+    
+    socket.emit('connection', {date: new Date().getTime(), data: "Hello Unity"});
 
-    // send a welcome message
-    socket.send(JSON.stringify({ action: "connected", message: "Welcome to UNO Server!" }));
-
+    // Add incoming messages to the queue
     socket.on("message", (data) => {
-        const parsedData = JSON.parse(data);
-        console.log("Received:", parsedData);
-
-        // add message to the queue
-        messageQueue.push({ socket, parsedData });
-
-        // process queue if not already processing
+        console.log("yo")
+        messageQueue.push({ socket, data });
         processQueue();
     });
 
-    socket.on("close", () => {
-        console.log("User disconnected");
+    socket.on("disconnect", () => {
+        console.log("A user disconnected");
     });
 });
 
 async function processQueue() {
+    console.log("Heoolo queue")
     if (isProcessing || messageQueue.length === 0) {
         return;
     }
@@ -35,34 +143,50 @@ async function processQueue() {
     isProcessing = true; // lock queue processing
 
     while (messageQueue.length > 0) {
-        const { socket, parsedData } = messageQueue.shift(); // get the next message in queue
+        const { socket, data } = messageQueue.shift(); // get the next message
 
-        console.log("Processing message:", parsedData.action);
+        console.log("Processing message:", data.action);
 
-        if (parsedData.action === 'drawCard') {
-            await sendResponse(socket, { action: "cardDrawn", message: "You drew a card!" });
-        } else if (parsedData.action === 'sendDeck') {
-            console.log("Received deck:", parsedData.cards);
-            gameObjects["deck"] = parsedData.cards;
-            await sendResponse(socket, { action: "deckSaved", message: "Deck Saved!" });
-        } else if (parsedData.action === 'sendPlayerCards') {
-            console.log("Received player cards:", parsedData.cards);
-            gameObjects["playerCards"] = parsedData.cards;
-            await sendResponse(socket, { action: "playerCardsSaved", message: "Player Cards Saved!" });
+        if (data.action === 'drawCard') {
+            await handleDrawCard(socket);
+        } else if (data.action === 'sendDeck') {
+            await handleSendDeck(socket, data);
+        } else if (data.action === 'sendPlayerCards') {
+            await handleSendPlayerCards(socket, data);
         }
     }
 
     isProcessing = false; // unlock queue processing
 }
 
-// helper function to send response with a delay to simulate processing time
+// Example handlers for events
+async function handleDrawCard(socket) {
+    // Simulate some processing delay
+    await sendResponse(socket, { action: "cardDrawn", message: "You drew a card!" });
+}
+
+async function handleSendDeck(socket, data) {
+    console.log("Received deck:", data.cards);
+    // Save deck, process further
+    await sendResponse(socket, { action: "deckSaved", message: "Deck Saved!" });
+}
+
+async function handleSendPlayerCards(socket, data) {
+    console.log("Received player cards:", data.cards);
+    // Save player cards, process further
+    await sendResponse(socket, { action: "playerCardsSaved", message: "Player Cards Saved!" });
+}
+
+// helper function to send response with delay
 function sendResponse(socket, response) {
     return new Promise((resolve) => {
         setTimeout(() => {
-            socket.send(JSON.stringify(response));
+            socket.emit("response", response);
             resolve();
-        }, 500); // simulate processing delay (adjust as needed)
+        }, 500); // simulate delay
     });
 }
 
-console.log("UNO Server running on port 3000");
+io.listen(port);
+
+console.log('UNO Server running on port ' + port);
