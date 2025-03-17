@@ -87,13 +87,8 @@ io.use((socket, next) => {
         next(new Error("Authentication error"));
     }
 });
-// server.use((socket, next) => {
-//     if (socket.handshake.query.token === "UNITY") {
-//         next();
-//     } else {
-//         next(new Error("Authentication error"));
-//     }
-// });
+
+
 
 // io.on('connection', socket => {
 //   socket.emit('connection', {date: new Date().getTime(), data: "Hello Unity"})
@@ -119,7 +114,8 @@ let isProcessing = false;
 
 io.on("connection", (socket) => {
     console.log("A user connected");
-    
+    // console.log(socket);
+    // console.log(messageQueue);
     socket.emit('connection', {date: new Date().getTime(), data: "Hello Unity"});
 
     // Add incoming messages to the queue
