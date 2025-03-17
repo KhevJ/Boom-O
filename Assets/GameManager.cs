@@ -318,7 +318,7 @@ public class GameManager : MonoBehaviour
     public void ChooseBlue() { SetWildColor(Card.CardColor.Blue); }
     public void ChooseGreen() { SetWildColor(Card.CardColor.Green); }
     public void ChooseYellow() { SetWildColor(Card.CardColor.Yellow); }
-    public void SetWildColor(Card.CardColor chosenColor)
+    private void SetWildColor(Card.CardColor chosenColor)
     {
         Debug.Log("Wild card color chosen: " + chosenColor);
 
