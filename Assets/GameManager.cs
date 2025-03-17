@@ -181,8 +181,27 @@ public class GameManager : MonoBehaviour
         float startX = -((7 - 1) * spacing) / 2;
 
         // Set the first card in discard pile
-        topCard = deck[0];
-        deck.RemoveAt(0);
+        //topCard = deck[0];
+        //deck.RemoveAt(0);
+
+        int index = 0;
+        while (index < deck.Count && (deck[index].type != Card.CardType.Number))
+        {
+            index++; // Skip special cards
+        }
+
+        // If we found a valid number card, set it as topCard
+        if (index < deck.Count)
+        {
+            topCard = deck[index];
+            deck.RemoveAt(index);
+        }
+        else
+        {
+            Debug.LogError("No number cards found in the deck!");
+            return; // Prevents further execution if there's an issue
+        }
+
         //if (topCard == null)
         //{
         //    Debug.LogError("Error: The first card in the deck is null.");
