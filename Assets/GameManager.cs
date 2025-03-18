@@ -66,7 +66,7 @@ public class GameManager : MonoBehaviour
         string jsonData = JsonUtility.ToJson(deckData);
         Debug.Log("Sending deck to server: " + jsonData);
 
-        WebSocketManager.Instance.SendText(jsonData);
+        WebSocketManager.Instance.SendText("sendDeck", jsonData);
     }
 
     [System.Serializable]
@@ -94,7 +94,7 @@ public class GameManager : MonoBehaviour
         string jsonData = JsonUtility.ToJson(playerCardsData);
         Debug.Log("Sending player cards to server: " + jsonData);
 
-        WebSocketManager.Instance.SendText(jsonData);
+        WebSocketManager.Instance.SendText("sendPlayerCards",jsonData);
     }
 
     void LoadCardSprites()
@@ -342,7 +342,7 @@ public class GameManager : MonoBehaviour
         };
         Debug.Log("sending draw: " + drawCardData);
         string jsonData = JsonUtility.ToJson(drawCardData);
-        WebSocketManager.Instance.SendText(jsonData);
+        WebSocketManager.Instance.SendText("drawCard", jsonData);
     }
 
     // // Handle server response

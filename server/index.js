@@ -114,16 +114,28 @@ let isProcessing = false;
 
 io.on("connection", (socket) => {
     console.log("A user connected");
+    const playerName = socket.handshake.query.playerName || "Unknown Player";
+    console.log(`Player Connected: ${playerName}`); 
+
+    socket.emit("welcome", { message: `Welcome, ${playerName}!` });
     // console.log(socket);
     // console.log(messageQueue);
-    socket.emit('connection', {date: new Date().getTime(), data: "Hello Unity"});
+   
 
     // Add incoming messages to the queue
     socket.on("message", (data) => {
-        console.log("yo")
-        messageQueue.push({ socket, data });
+        console.log("yo");
+        // messageQueue.push({ socket, data });
         processQueue();
     });
+
+    socket.on("drawCard", (data) => {
+        console.log(data)
+        messageQueue.push({ socket, action:"drawCard", data });
+        processQueue();
+    });
+
+
 
     socket.on("disconnect", () => {
         console.log("A user disconnected");
@@ -139,15 +151,15 @@ async function processQueue() {
     isProcessing = true; // lock queue processing
 
     while (messageQueue.length > 0) {
-        const { socket, data } = messageQueue.shift(); // get the next message
+        const { socket, action,  data } = messageQueue.shift(); // get the next message
 
-        console.log("Processing message:", data.action);
+        console.log("Processing message:", action);
 
-        if (data.action === 'drawCard') {
+        if (action === 'drawCard') {
             await handleDrawCard(socket);
-        } else if (data.action === 'sendDeck') {
+        } else if (action === 'sendDeck') {
             await handleSendDeck(socket, data);
-        } else if (data.action === 'sendPlayerCards') {
+        } else if (action === 'sendPlayerCards') {
             await handleSendPlayerCards(socket, data);
         }
     }
