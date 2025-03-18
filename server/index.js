@@ -155,7 +155,6 @@ io.on("connection", (socket) => {
 });
 
 async function processQueue() {
-    console.log("Heoolo queue")
     if (isProcessing || messageQueue.length === 0) {
         return;
     }
@@ -168,11 +167,11 @@ async function processQueue() {
         console.log("Processing message:", action);
 
         if (action === 'drawCard') {
-            handleDrawCard(socket);
+            handleDrawCard(socket, data);
         } else if (action === 'sendDeck') {
-            await handleSendDeck(socket, data);
+            handleSendDeck(socket, data);
         } else if (action === 'sendPlayerCards') {
-            await handleSendPlayerCards(socket, data);
+            handleSendPlayerCards(socket, data);
         }
     }
 
@@ -180,9 +179,16 @@ async function processQueue() {
 }
 
 //example handlers for events 
-function handleDrawCard(socket) {
-    // Simulate some processing delay
-    socket.emit('drawnCard', "Server said Draw for turn Khevin");
+function handleDrawCard(socket, data) {
+    console.log("Received drawn card:",data);
+    
+    if (gameObjects.deck) {
+        if(gameObjects.deck.length > 0 && gameObjects.deck[0] == data){
+            const topCard = gameObjects.deck.shift();
+            socket.emit('drawnCard', "Server said You drew " + topCard);
+            //here add something to broadcast to all the players in the room/game
+        }
+    }
 }
 
 function handleSendDeck(socket, data) {
@@ -191,7 +197,7 @@ function handleSendDeck(socket, data) {
     socket.emit('deckSaved', "Server said Yugioh is better than UNO");
 }
 
-async function handleSendPlayerCards(socket, data) {
+function handleSendPlayerCards(socket, data) {
     console.log("Received deck:", data);
     gameObjects["playerHand"] = data;
     socket.emit('playerCardsSaved', "Server said why play UNO when Yugioh exists");

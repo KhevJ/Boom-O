@@ -200,11 +200,11 @@ public class GameManager : MonoBehaviour
 
         if (type == Card.CardType.Number)
         {
-            return $"{color}_{number}"; // Example: "Blue_5", "Red_3"
+            return $"{color}_{number}"; 
         }
         else
         {
-            return $"{color}_{type}"; // Example: "Green_Reverse", "Red_DrawTwo"
+            return $"{color}_{type}";
         }
     }
 
@@ -247,20 +247,21 @@ public class GameManager : MonoBehaviour
                 string spriteName = GetSpriteName(cardScript.color, cardScript.type, cardScript.number);
                 if (cardSprites.ContainsKey(spriteName))
                 {
+                    SendDrawCardMessage(spriteName); //not too sure if this is right place to do that or above
                     SpriteRenderer spriteRenderer = drawnCard.GetComponent<SpriteRenderer>();
                     if (spriteRenderer != null)
                     {
                         spriteRenderer.sprite = cardSprites[spriteName]; // Show the correct front sprite
                     }
                 }
+               
                 else
                 {
                     Debug.LogError($"Sprite not found: {spriteName}");
                 }
             }
 
-            // Send draw card action to the server
-            SendDrawCardMessage();
+            
         }
         else
         {
@@ -325,24 +326,24 @@ public class GameManager : MonoBehaviour
 
 
 
-    [System.Serializable]
-    public class DrawCardMessage
-    {
-        public string action;
-        public string playerName;
-    };
+    // [System.Serializable]
+    // public class DrawCardMessage
+    // {
+    //     public string action;
+    //     public string playerName;
+    // };
     // Send a message when the player draws a card
-    void SendDrawCardMessage()
+    void SendDrawCardMessage(string card)
     {
 
-        DrawCardMessage drawCardData = new DrawCardMessage
-        {
-            action = "drawCard",
-            playerName = "Player1"
-        };
-        Debug.Log("sending draw: " + drawCardData);
-        string jsonData = JsonUtility.ToJson(drawCardData);
-        WebSocketManager.Instance.SendData("drawCard", jsonData);
+        // DrawCardMessage drawCardData = new DrawCardMessage
+        // {
+        //     action = "drawCard",
+        //     playerName = "Player1"
+        // };
+        // Debug.Log("sending draw: " + drawCardData);
+        // string jsonData = JsonUtility.ToJson(drawCardData);
+        WebSocketManager.Instance.SendData("drawCard", card);
     }
 
     // // Handle server response
