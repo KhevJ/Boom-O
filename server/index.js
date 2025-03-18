@@ -108,7 +108,7 @@ io.use((socket, next) => {
 
 
 
-
+const gameObjects = {}; // store game state
 const messageQueue = []; // queue to process messages in order
 let isProcessing = false;
 
@@ -132,6 +132,18 @@ io.on("connection", (socket) => {
     socket.on("drawCard", (data) => {
         // console.log(data)
         messageQueue.push({ socket, action:"drawCard", data });
+        processQueue();
+    });
+
+    socket.on("sendDeck", (data) => {
+        // console.log(data)
+        messageQueue.push({ socket, action:"sendDeck", data });
+        processQueue();
+    });
+
+    socket.on("playerCardsSaved", (data) => {
+        // console.log(data)
+        messageQueue.push({ socket, action:"playerCardsSaved", data });
         processQueue();
     });
 
@@ -167,33 +179,33 @@ async function processQueue() {
     isProcessing = false; // unlock queue processing
 }
 
-// Example handlers for events
+//example handlers for events 
 function handleDrawCard(socket) {
     // Simulate some processing delay
     socket.emit('drawnCard', "Server said Draw for turn Khevin");
 }
 
-async function handleSendDeck(socket, data) {
-    console.log("Received deck:", data.cards);
-    // Save deck, process further
-    await sendResponse(socket, { action: "deckSaved", message: "Deck Saved!" });
+function handleSendDeck(socket, data) {
+    console.log("Received deck:", data);
+    gameObjects["deck"] = data;
+    socket.emit('deckSaved', "Server said Yugioh is better than UNO");
 }
 
 async function handleSendPlayerCards(socket, data) {
-    console.log("Received player cards:", data.cards);
-    // Save player cards, process further
-    await sendResponse(socket, { action: "playerCardsSaved", message: "Player Cards Saved!" });
+    console.log("Received deck:", data);
+    gameObjects["playerHand"] = data;
+    socket.emit('playerCardsSaved', "Server said why play UNO when Yugioh exists");
 }
 
-// helper function to send response with delay
-function sendResponse(socket, response) {
-    return new Promise((resolve) => {
-        setTimeout(() => {
-            socket.emit("response", response);
-            resolve();
-        }, 500); // simulate delay
-    });
-}
+//helper function to send response with delay for testing
+// function sendResponse(socket, response) {
+//     return new Promise((resolve) => {
+//         setTimeout(() => {
+//             socket.emit("response", response);
+//             resolve();
+//         }, 500); // simulate delay
+//     });
+// }
 
 io.listen(port);
 

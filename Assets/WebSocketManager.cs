@@ -189,8 +189,8 @@ public class WebSocketManager : MonoBehaviour
             Transport = SocketIOClient.Transport.TransportProtocol.WebSocket
         })
         {
-            // Handle Connection
-            JsonSerializer = new NewtonsoftJsonSerializer()
+        
+            JsonSerializer = new NewtonsoftJsonSerializer() // turns objects into json
         };
 
         ///// reserved socketio events
@@ -201,11 +201,11 @@ public class WebSocketManager : MonoBehaviour
         };
         socket.OnPing += (sender, e) =>
         {
-            // Debug.Log("Ping");
+            //Debug.Log("Ping");
         };
         socket.OnPong += (sender, e) =>
         {
-            // Debug.Log("Pong: " + e.TotalMilliseconds);
+            //Debug.Log("Pong: " + e.TotalMilliseconds);
         };
         socket.OnDisconnected += (sender, e) =>
         {
@@ -215,39 +215,37 @@ public class WebSocketManager : MonoBehaviour
         {
             Debug.Log($"{DateTime.Now} Reconnecting: attempt = {e}");
         };
-        ////
-
-        
-
         
 
 
         socket.On("welcome", (response) => {
-            Debug.Log(response);
-            Debug.Log("Server said Khevin is truly the goat.");
+            Debug.Log(response.GetValue<string>()); 
+            
         });
-        //This is for listening for messages
+        
         socket.On("drawnCard", (response) =>
         {
             Debug.Log(response.GetValue<string>()); 
-            Debug.Log("Server responded: Card drawn successfully!");
+            // Debug.Log("Server responded: Card drawn successfully!");
         });
 
         socket.On("deckSaved", (response) =>
         {
-            Debug.Log("Server responded: Deck saved successfully!");
+            Debug.Log(response.GetValue<string>());
+            // Debug.Log("Server responded: Deck saved successfully!");
         });
 
         socket.On("playerCardsSaved", (response) =>
         {
-            Debug.Log("Server responded: Player cards saved successfully!");
+            Debug.Log(response.GetValue<string>());
+            // Debug.Log("Server responded: Player cards saved successfully!");
         });
 
-        // Connect to the server
+        
         socket.Connect();
     }
 
-    public void SendText(string action, object data)
+    public void SendData(string action, object data)
     {
         
         if (socket != null && connected)

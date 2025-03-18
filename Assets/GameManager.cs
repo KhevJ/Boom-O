@@ -66,20 +66,20 @@ public class GameManager : MonoBehaviour
         // string jsonData = JsonUtility.ToJson(deckData);
         // Debug.Log("Sending deck to server: " + jsonData);
 
-        WebSocketManager.Instance.SendText("sendDeck", string_deck );
+        WebSocketManager.Instance.SendData("sendDeck", string_deck );
     }
 
-    [System.Serializable]
-    public class PlayerCardsData
-    {
-        public string action = "sendPlayerCards";
-        public List<string> cards;
-    }
+    // [System.Serializable]
+    // public class PlayerCardsData
+    // {
+    //     public string action = "sendPlayerCards";
+    //     public List<string> cards;
+    // }
 
     void SendPlayerCards()
     {
-        PlayerCardsData playerCardsData = new PlayerCardsData();
-        playerCardsData.cards = new List<string>();
+        // PlayerCardsData playerCardsData = new PlayerCardsData();
+        List<string> cards = new List<string>();
 
         foreach (Transform cardTransform in playerCards)
         {
@@ -87,14 +87,14 @@ public class GameManager : MonoBehaviour
             if (cardScript != null)
             {
                 string spriteName = GetSpriteName(cardScript.color, cardScript.type, cardScript.number);
-                playerCardsData.cards.Add(spriteName);
+                cards.Add(spriteName);
             }
         }
 
-        string jsonData = JsonUtility.ToJson(playerCardsData);
-        Debug.Log("Sending player cards to server: " + jsonData);
+        // string jsonData = JsonUtility.ToJson(playerCardsData);
+        // Debug.Log("Sending player cards to server: " + jsonData);
 
-        WebSocketManager.Instance.SendText("sendPlayerCards",jsonData);
+        WebSocketManager.Instance.SendData("sendPlayerCards",cards);
     }
 
     void LoadCardSprites()
@@ -342,7 +342,7 @@ public class GameManager : MonoBehaviour
         };
         Debug.Log("sending draw: " + drawCardData);
         string jsonData = JsonUtility.ToJson(drawCardData);
-        WebSocketManager.Instance.SendText("drawCard", jsonData);
+        WebSocketManager.Instance.SendData("drawCard", jsonData);
     }
 
     // // Handle server response
