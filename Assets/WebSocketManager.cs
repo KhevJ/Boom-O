@@ -10,7 +10,7 @@ public class WebSocketManager : MonoBehaviour
 
     private WebSocket webSocket;
     public bool connected = false;
-    private string serverUrl = "ws://35.90.5.38:3000/:3000";
+    private string serverUrl = "ws://44.242.216.81:3000";
     void Awake()
     {
         Debug.Log("Hello from websock");
