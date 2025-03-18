@@ -54,19 +54,19 @@ public class GameManager : MonoBehaviour
     void SendDeck()
     {
         DeckData deckData = new DeckData();
-        deckData.cards = new List<string>();
+        List<string> string_deck = new List<string>();
 
 
         foreach (Card card in deck)
         {
             string spriteName = GetSpriteName(card.color, card.type, card.number);
-            deckData.cards.Add(spriteName);
+            string_deck.Add(spriteName);
         }
 
-        string jsonData = JsonUtility.ToJson(deckData);
-        Debug.Log("Sending deck to server: " + jsonData);
+        // string jsonData = JsonUtility.ToJson(deckData);
+        // Debug.Log("Sending deck to server: " + jsonData);
 
-        WebSocketManager.Instance.SendText("sendDeck", jsonData);
+        WebSocketManager.Instance.SendText("sendDeck", string_deck );
     }
 
     [System.Serializable]

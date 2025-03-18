@@ -130,7 +130,7 @@ io.on("connection", (socket) => {
     });
 
     socket.on("drawCard", (data) => {
-        console.log(data)
+        // console.log(data)
         messageQueue.push({ socket, action:"drawCard", data });
         processQueue();
     });
@@ -156,7 +156,7 @@ async function processQueue() {
         console.log("Processing message:", action);
 
         if (action === 'drawCard') {
-            await handleDrawCard(socket);
+            handleDrawCard(socket);
         } else if (action === 'sendDeck') {
             await handleSendDeck(socket, data);
         } else if (action === 'sendPlayerCards') {
@@ -168,9 +168,9 @@ async function processQueue() {
 }
 
 // Example handlers for events
-async function handleDrawCard(socket) {
+function handleDrawCard(socket) {
     // Simulate some processing delay
-    await sendResponse(socket, { action: "cardDrawn", message: "You drew a card!" });
+    socket.emit('drawnCard', "Server said Draw for turn Khevin");
 }
 
 async function handleSendDeck(socket, data) {

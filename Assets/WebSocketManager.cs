@@ -223,11 +223,13 @@ public class WebSocketManager : MonoBehaviour
 
 
         socket.On("welcome", (response) => {
+            Debug.Log(response);
             Debug.Log("Server said Khevin is truly the goat.");
         });
-        // Listen for messages
-        socket.On("cardDrawn", (response) =>
+        //This is for listening for messages
+        socket.On("drawnCard", (response) =>
         {
+            Debug.Log(response.GetValue<string>()); 
             Debug.Log("Server responded: Card drawn successfully!");
         });
 
@@ -247,12 +249,10 @@ public class WebSocketManager : MonoBehaviour
 
     public void SendText(string action, object data)
     {
-        // Debug.Log(data);
-        // Debug.Log(action);
-        //string jsonData = JsonUtility.ToJson(data);
+        
         if (socket != null && connected)
         {
-            socket.EmitAsync("drawCard", "world");
+            socket.Emit(action, data);
         }
         else
         {
