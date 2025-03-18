@@ -65,8 +65,11 @@ public class DragDrop : MonoBehaviour
                     transform.position = startposition;
                 }
             }
+            else{
+                transform.position = startposition;
+            }
         }
-        
+
 
     }
 

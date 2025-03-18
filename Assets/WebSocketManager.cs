@@ -13,10 +13,10 @@ public class WebSocketManager : MonoBehaviour
     private string serverUrl = "ws://44.242.216.81:3000";
     void Awake()
     {
-        Debug.Log("Hello from websock");
+        
         if (instance == null)
         {
-            Debug.Log("Hello from websocket");
+            
             instance = this;
             DontDestroyOnLoad(gameObject);  //make this object persistent when we change scemes
         }
