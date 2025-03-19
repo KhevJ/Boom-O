@@ -26,18 +26,21 @@ public class GameManager : MonoBehaviour
 
     IEnumerator InitializeGame()
     {
-        // yield return StartCoroutine(InitializeWebSocketCoroutine()); // Wait for connection
+        // yield return StartCoroutine(InitializeWebSocketCoroutine()); // wait for connection
         while (WebSocketManager.Instance == null || !WebSocketManager.Instance.connected)
         {
             yield return null; // wait till connection is made
         }
         LoadCardSprites();
-        InitializeDeck();
-        ShuffleDeck();
-        DealCards();
+        InitializeDeck(); // should be when firt client joins
+        ShuffleDeck(); // should be when firt client joins
+        DealCards(); // would be in all clients 
 
-        SendDeck();
-        SendPlayerCards();
+        //Deal Cards() include sending top card to server
+
+        SendDeck(); // should be when first client joins
+        //find a way to set deck when other clients join
+        SendPlayerCards(); 
     }
 
     public void TestButton()
@@ -47,7 +50,7 @@ public class GameManager : MonoBehaviour
     void SendDeck()
     {
         
-        List<string> string_deck = new(); //names of cards as string Note can use new() to instanstiate
+        List<string> string_deck = new(); //names of cards as string Note: can use new() to instanstiate
         
 
 
@@ -159,10 +162,13 @@ public class GameManager : MonoBehaviour
             index++; // Skip special cards
         }
 
+        //Note: change this Khevin so that only host does this.
         // If we found a valid number card, set it as topCard
         if (index < deck.Count)
         {
             topCard = deck[index];
+            WebSocketManager.Instance.topCard = GetSpriteName(topCard.color, topCard.type, topCard.number); // update the top card of websocket
+            WebSocketManager.Instance.SendData("sendTopCard", GetSpriteName(topCard.color, topCard.type, topCard.number)); //send top card to server
             deck.RemoveAt(index);
         }
         else
@@ -209,7 +215,7 @@ public class GameManager : MonoBehaviour
         
     }
 
-    string GetSpriteName(Card.CardColor color, Card.CardType type, int number)
+    public string GetSpriteName(Card.CardColor color, Card.CardType type, int number)
     {
         if (color == Card.CardColor.Wild)
         {

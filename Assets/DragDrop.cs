@@ -4,38 +4,46 @@ using UnityEngine;
 
 public class DragDrop : MonoBehaviour
 {
-    
+
     private Vector3 startposition;
     public Transform discardPile;
     public GameManager gameManager;
 
     // int order = 0; //commented this thing out to suppress warnings
-    
-    void Start(){
+
+    void Start()
+    {
         discardPile = GameObject.Find("DiscardPile").transform;
         gameManager = FindObjectOfType<GameManager>();
-        startposition=transform.position;
+        startposition = transform.position;
     }
 
-    private void OnMouseDown(){
-        if(transform.parent.name=="PlayerCards"){
-            startposition=transform.position;
+    private void OnMouseDown()
+    {
+        if (transform.parent.name == "PlayerCards")
+        {
+            startposition = transform.position;
             transform.position = GetMousePositionInWorldSpace();
         }
-        if(transform.parent.name=="DrawPile"){
+        if (transform.parent.name == "DrawPile")
+        {
             gameManager.DrawCard();
         }
-        
+
     }
 
-    private void OnMouseDrag(){
-        if(transform.parent.name=="PlayerCards"){
+    private void OnMouseDrag()
+    {
+        if (transform.parent.name == "PlayerCards")
+        {
             transform.position = GetMousePositionInWorldSpace();
         }
     }
 
-    private void OnMouseUp(){
-        if(transform.parent.name=="PlayerCards"){
+    private void OnMouseUp()
+    {
+        if (transform.parent.name == "PlayerCards")
+        {
             float distance = Vector3.Distance(transform.position, discardPile.position);
             if (distance < 0.6f)
             {
@@ -43,6 +51,8 @@ public class DragDrop : MonoBehaviour
                 if (gameManager.CanPlaceCard(currentCard))
                 {
                     transform.SetParent(discardPile);
+                    WebSocketManager.Instance.topCard = gameManager.GetSpriteName(currentCard.color, currentCard.type, currentCard.number); // update the top card of websocket
+                    WebSocketManager.Instance.SendData("sendTopCard", gameManager.GetSpriteName(currentCard.color, currentCard.type, currentCard.number)); //send top card to server
                     transform.localPosition = Vector3.zero;
 
                     SpriteRenderer spriteRenderer = GetComponent<SpriteRenderer>();
@@ -65,7 +75,8 @@ public class DragDrop : MonoBehaviour
                     transform.position = startposition;
                 }
             }
-            else{
+            else
+            {
                 transform.position = startposition;
             }
         }
@@ -73,11 +84,12 @@ public class DragDrop : MonoBehaviour
 
     }
 
-    public Vector3 GetMousePositionInWorldSpace(){
+    public Vector3 GetMousePositionInWorldSpace()
+    {
         Vector3 position = Camera.main.ScreenToWorldPoint(Input.mousePosition);
         position.z = 0f;
         return position;
     }
 
-    
+
 }

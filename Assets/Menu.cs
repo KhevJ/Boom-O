@@ -7,19 +7,53 @@ public class Menu : MonoBehaviour
 {
 
     public GameObject waitPopup;
+
     
-    public void playGame(){
+
+    void Start()
+    {
+        StartCoroutine(InitializeGame());
+        
+    }
+
+    IEnumerator InitializeGame()
+    {
+        // yield return StartCoroutine(InitializeWebSocketCoroutine()); // wait for connection
+        while (WebSocketManager.Instance == null || !WebSocketManager.Instance.connected)
+        {
+            yield return null; // wait till connection is made
+        }
+       
+    }
+
+    void Update(){
+        if(WebSocketManager.Instance.roomLength == 2){
+            waitPopup.SetActive(false); //players have joined
+            SceneManager.LoadScene("SampleScene");
+        } 
+    }   
+
+    public void playGame()
+    {
+        InitializeGame();
+        WebSocketManager.Instance.CreateRoom();
         waitPopup.SetActive(true);
-        // Load the game scene after other players join **not done yet
-        SceneManager.LoadScene("SampleScene");
+        // Load the game scene after other players join **not done yet Done now
+        // SceneManager.LoadScene("SampleScene");
     }
 
-    public void closePopup(){
-        waitPopup.SetActive(false);
+    public void closePopup()
+    {
+        //waitPopup.SetActive(false);
     }
 
-    public void quitGame(){
-        Application.Quit();
+    // think of this as join
+    public void quitGame()
+    {
+        InitializeGame();
+        WebSocketManager.Instance.JoinRoom();
+        waitPopup.SetActive(true);
+        // Application.Quit();
         Debug.Log("quit game");
     }
 }
