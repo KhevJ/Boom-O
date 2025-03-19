@@ -1,24 +1,30 @@
-using System.Collections;
+using System;
 using System.Collections.Generic;
+using SocketIOClient;
+using SocketIOClient.Newtonsoft.Json;
 using UnityEngine;
-using NativeWebSocket;
+using Newtonsoft.Json.Linq;
+
+
+
+
+
 public class WebSocketManager : MonoBehaviour
 {
+    private static WebSocketManager instance;
+    public static WebSocketManager Instance => instance;
 
-    private static WebSocketManager instance; // the singleton
-    public static WebSocketManager Instance => instance; //function to get the instance
-
-    private WebSocket webSocket;
+    private SocketIOUnity socket;
     public bool connected = false;
-    private string serverUrl = "ws://44.242.216.81:3000";
+    private readonly string serverUrl = "http://localhost:3000";
+
     void Awake()
     {
-        
+        //Debug.Log("Hello from WebSocketManager");
         if (instance == null)
         {
-            
             instance = this;
-            DontDestroyOnLoad(gameObject);  //make this object persistent when we change scemes
+            DontDestroyOnLoad(gameObject);
         }
         else
         {
@@ -26,126 +32,102 @@ public class WebSocketManager : MonoBehaviour
             return;
         }
 
-        StartCoroutine(InitializeWebSocket());
+        InitializeSocketIO(); // would normally be triggered by first scene
     }
 
-    IEnumerator InitializeWebSocket()
+    void InitializeSocketIO()
     {
-        webSocket = new WebSocket(serverUrl);
-        connected = false;
-
-        webSocket.OnOpen += () =>
+        var uri = new Uri(serverUrl);
+        socket = new SocketIOUnity(uri, new SocketIOOptions
         {
-            Debug.Log("Connected to WebSocket server!");
+            Query = new Dictionary<string, string>
+                {
+                    {"token", "UNITY" },
+                    { "playerName", "Khevin The Goat" }
+                }
+            ,
+            EIO = 4
+            ,
+            Transport = SocketIOClient.Transport.TransportProtocol.WebSocket
+        })
+        {
+        
+            JsonSerializer = new NewtonsoftJsonSerializer() // turns objects into json
+        };
+
+        ///// reserved socketio events
+        socket.OnConnected += (sender, e) =>
+        {
             connected = true;
-            SendConnectionMessage();
+            Debug.Log("socket.OnConnected" + e);
         };
-
-        webSocket.OnError += (error) => Debug.LogError("WebSocket error: " + error);
-        webSocket.OnClose += (e) => Debug.Log("WebSocket closed!");
-
-        webSocket.OnMessage += (bytes) =>
+        socket.OnPing += (sender, e) =>
         {
-            string message = System.Text.Encoding.UTF8.GetString(bytes);
-            Debug.Log("Message from server: " + message);
-            HandleServerResponse(message);
+            //Debug.Log("Ping");
         };
-
-        webSocket.Connect();
-
-        while (!connected)
+        socket.OnPong += (sender, e) =>
         {
-            yield return null;
-        }
+            //Debug.Log("Pong: " + e.TotalMilliseconds);
+        };
+        socket.OnDisconnected += (sender, e) =>
+        {
+            Debug.Log("disconnect: " + e);
+        };
+        socket.OnReconnectAttempt += (sender, e) =>
+        {
+            Debug.Log($"{DateTime.Now} Reconnecting: attempt = {e}");
+        };
+        
+
+
+        socket.On("welcome", (response) => {
+            Debug.Log(response.GetValue<string>()); 
+            
+        });
+        
+        socket.On("drawnCard", (response) =>
+        {
+            Debug.Log(response.GetValue<string>()); 
+            // Debug.Log("Server responded: Card drawn successfully!");
+        });
+
+        socket.On("deckSaved", (response) =>
+        {
+            Debug.Log(response.GetValue<string>());
+            // Debug.Log("Server responded: Deck saved successfully!");
+        });
+
+        socket.On("playerCardsSaved", (response) =>
+        {
+            Debug.Log(response.GetValue<string>());
+            // Debug.Log("Server responded: Player cards saved successfully!");
+        });
+
+        
+        socket.Connect();
     }
 
-    void Update()
+    public void SendData(string action, object data)
     {
-        if (webSocket != null)
+        
+        if (socket != null && connected)
         {
-            webSocket.DispatchMessageQueue();
-        }
-    }
-
-    public void SendText(string jsonData)
-    {
-        if (webSocket != null && connected)
-        {
-            webSocket.SendText(jsonData);
+            socket.Emit(action, data);
         }
         else
         {
-            Debug.LogWarning("WebSocket is not connected yet!");
-        }
-    }
-
-    private void SendConnectionMessage()
-    {
-        var connectionData = new
-        {
-            action = "connect",
-            playerName = "Khevin The Goat"
-        };
-        string jsonData = JsonUtility.ToJson(connectionData);
-        SendText(jsonData);
-    }
-
-
-    [System.Serializable]
-    public class ServerResponse
-    {
-        public string action;
-        public string message;
-    }
-
-    // Handle server response
-    void HandleServerResponse(string message)
-    {
-
-        var response = JsonUtility.FromJson<ServerResponse>(message);
-
-        if (response.action == "cardDrawn")
-        {
-            Debug.Log("Server responded: Card drawn successfully!");
-
-        }
-        if (response.action == "deckSaved")
-        {
-            Debug.Log("Server responded: Deck Saved successfully!");
-
-        }
-        if (response.action == "playerCardsSaved")
-        {
-            Debug.Log("Server responded: PlayerCards Saved successfully!");
-
-        }
-        else if (response.action == "error")
-        {
-            Debug.LogError("Error from server: " + response.message);
+            Debug.LogWarning("Socket.IO is not connected yet!");
         }
     }
 
 
-    private async void OnApplicationQuit()
+
+    private void OnApplicationQuit()
     {
-        if (webSocket != null)
+        if (socket != null)
         {
-            await webSocket.Close();
+            socket.Disconnect();
         }
     }
 }
 
-
-
-// // Start is called before the first frame update
-// void Start()
-// {
-//     //let's go singleton pattern
-// }
-
-// // Update is called once per frame
-// void Update()
-// {
-
-// }
-//
