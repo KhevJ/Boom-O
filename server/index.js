@@ -54,9 +54,9 @@ io.on("connection", (socket) => {
         processQueue();
     });
 
-    socket.on("playerCardsSaved", (data) => {
+    socket.on("sendPlayerCards", (data) => {
         // console.log(data)
-        messageQueue.push({ socket, action:"playerCardsSaved", data });
+        messageQueue.push({ socket, action:"sendPlayerCards", data });
         processQueue();
     });
 

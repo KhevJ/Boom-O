@@ -6,9 +6,6 @@ using UnityEngine;
 using Newtonsoft.Json.Linq;
 
 
-
-
-
 public class WebSocketManager : MonoBehaviour
 {
     private static WebSocketManager instance;

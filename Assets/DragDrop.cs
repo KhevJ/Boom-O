@@ -9,7 +9,7 @@ public class DragDrop : MonoBehaviour
     public Transform discardPile;
     public GameManager gameManager;
 
-    int order = 0;
+    // int order = 0; //commented this thing out to suppress warnings
     
     void Start(){
         discardPile = GameObject.Find("DiscardPile").transform;
