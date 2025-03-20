@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Mirror.Examples.MultipleMatch;
 using UnityEditor.Tilemaps;
 using UnityEngine;
+using System.Linq;
 
 
 public class GameManager : MonoBehaviour
@@ -11,7 +12,7 @@ public class GameManager : MonoBehaviour
     public Transform playerCards;
     public Transform drawPile;
 
-    private List<Card> deck = new List<Card>();
+    private List<Card> deck = new();
     private Dictionary<string, Sprite> cardSprites;
     public Sprite cardBackSprite;
 
@@ -46,9 +47,9 @@ public class GameManager : MonoBehaviour
             DealCards(); //edited that for top card only
             SendDeck();
         }
-        
 
-        while (WebSocketManager.Instance.deck.Count > 0 || WebSocketManager.Instance.playerCards.Count > 0 || string.IsNullOrEmpty(WebSocketManager.Instance.topCard))
+
+        while (WebSocketManager.Instance.deck.Count <= 0 || WebSocketManager.Instance.playerCards.Count <= 0 || string.IsNullOrEmpty(WebSocketManager.Instance.topCard))
         {
             yield return null;
         }
@@ -56,7 +57,8 @@ public class GameManager : MonoBehaviour
 
         //convert string of cards to deck
         // convert string of cards to playcards
-        ConvertStringToPlayerCards(WebSocketManager.Instance.playerCards);
+
+        // ConvertStringToPlayerCards(WebSocketManager.Instance.playerCards);
 
 
 
@@ -64,42 +66,38 @@ public class GameManager : MonoBehaviour
         if (!WebSocketManager.Instance.host)
         {
             string cardName = WebSocketManager.Instance.topCard;
+            
+
             if (cardSprites.ContainsKey(cardName))
             {
                 GameObject cardObject = null;
+                int i = 0;
                 foreach (var pair in UNODeckList)
                 {
-                    if (pair.Key == cardName && !pair.Value.activeSelf)
+                    if (pair.Key == cardName)
                     {
+                        
                         cardObject = pair.Value;
+
                         break;
                     }
+                    i++;
                 }
                 Card cardScript = cardObject.GetComponent<Card>();
-                string[] parts = cardName.Split('_');
-                Card.CardColor color = (Card.CardColor)System.Enum.Parse(typeof(Card.CardColor), parts[0]);
-
-                Card.CardType type;
-                int number = -1;
-
-                if (parts.Length == 2 && int.TryParse(parts[1], out number))
-                {
-                    type = Card.CardType.Number;
-                }
-                else
-                {
-                    type = (Card.CardType)System.Enum.Parse(typeof(Card.CardType), parts[1]);
-                }
-
-                cardScript.SetCardData(color, type, number, cardSprites[cardName]);
-
+                Debug.Log(cardScript.number);
                 cardScript.transform.SetParent(discardPile);
 
                 cardScript.transform.localPosition = Vector3.zero;
                 topCard = cardScript;
                 cardScript.gameObject.SetActive(true);
+                UNODeckList.RemoveAt(i);
             }
+            
+            
+            
         }
+        ConvertStringToPlayerCards(WebSocketManager.Instance.playerCards);
+        ConvertStringToDeckCards(WebSocketManager.Instance.deck);
 
 
 
@@ -223,7 +221,7 @@ public class GameManager : MonoBehaviour
         deck.Add(card);
         cardObject.SetActive(false);
         UNODeckList.Add(new KeyValuePair<string, GameObject>(spriteName, cardObject));
-        
+
     }
 
     void ShuffleDeck()
@@ -474,41 +472,50 @@ public class GameManager : MonoBehaviour
         float spacing = 0.3f;
         float startX = -((7 - 1) * spacing) / 2;
         int i = 0;
+
         foreach (string cardName in cardNames)
         {
-            Debug.Log(i);
-            Debug.Log(cardNames);
+
             if (cardSprites.ContainsKey(cardName))
             {
-
+                
+        
                 GameObject cardObject = null;
+                int j = 0;
                 foreach (var pair in UNODeckList)
                 {
-                    if (pair.Key == cardName && !pair.Value.activeSelf)
+                    if (pair.Key == cardName  && pair.Value != null)
                     {
                         cardObject = pair.Value;
+
                         break;
                     }
+                    j+=1;
                 }
+                if(cardObject == null ){
+                    
+                    Debug.Log(cardName);
+                }
+
                 Card cardScript = cardObject.GetComponent<Card>();
 
                 // Extract color and type from the sprite name
-                string[] parts = cardName.Split('_');
-                Card.CardColor color = (Card.CardColor)System.Enum.Parse(typeof(Card.CardColor), parts[0]);
+                // string[] parts = cardName.Split('_');
+                // Card.CardColor color = (Card.CardColor)System.Enum.Parse(typeof(Card.CardColor), parts[0]);
 
-                Card.CardType type;
-                int number = -1;
+                // Card.CardType type;
+                // int number = -1;
 
-                if (parts.Length == 2 && int.TryParse(parts[1], out number))
-                {
-                    type = Card.CardType.Number;
-                }
-                else
-                {
-                    type = (Card.CardType)System.Enum.Parse(typeof(Card.CardType), parts[1]);
-                }
+                // if (parts.Length == 2 && int.TryParse(parts[1], out number))
+                // {
+                //     type = Card.CardType.Number;
+                // }
+                // else
+                // {
+                //     type = (Card.CardType)System.Enum.Parse(typeof(Card.CardType), parts[1]);
+                // }
 
-                cardScript.SetCardData(color, type, number, cardSprites[cardName]);
+                // cardScript.SetCardData(color, type, number, cardSprites[cardName]);
 
                 cardObject.transform.SetParent(playerCards);
                 cardObject.transform.localPosition = new Vector3(startX + (i * spacing), 0, 0);
@@ -517,52 +524,128 @@ public class GameManager : MonoBehaviour
                 {
                     spriteRenderer.sortingOrder = i; // Leftmost = lowest order, Rightmost = highest
                 }
-               cardScript.gameObject.SetActive(true);
+                cardScript.gameObject.SetActive(true);
+                UNODeckList.RemoveAt(j);
             }
             else
             {
                 Debug.LogError($"Card sprite not found for: {cardName}");
             }
-            i = -~i; // finally I get to use this. Learned about this in a youtube vid
+            i += 1;
         }
+
+        //UNODeckList.RemoveAt(i-1);
+
 
     }
 
-    public void UpdatePlayerCard()
+    public void ConvertStringToDeckCards(List<string> cardNames)
     {
-        float spacing = 0.3f;
-        float startX = -((7 - 1) * spacing) / 2;
-        for (int i = 0; i < 7; i++)
+        List<KeyValuePair<string, GameObject>> shallowDeckListCopy = UNODeckList.ToList();
+        List<Card> newDeck = new();
+        int i = 0;
+        foreach (string cardName in cardNames)
         {
-            Card card = deck[0];
-            deck.RemoveAt(0);
-            card.transform.SetParent(playerCards);
-            card.transform.localPosition = new Vector3(startX + (i * spacing), 0, 0);
-            SpriteRenderer spriteRenderer = card.GetComponent<SpriteRenderer>();
-            if (spriteRenderer != null)
+            int j =0;
+            if (cardSprites.ContainsKey(cardName))
             {
-                spriteRenderer.sortingOrder = i; // Leftmost = lowest order, Rightmost = highest
+
+                GameObject cardObject = null;
+                foreach (var pair in shallowDeckListCopy)
+                {
+                    if (pair.Key == cardName && pair.Value != null)
+                    {
+                        cardObject = pair.Value;
+                        
+                        break;
+                    }
+                    j+=1;
+                }
+                if(cardObject == null ){
+                    
+                    Debug.Log(cardName);
+                }
+                Card cardScript = cardObject.GetComponent<Card>();
+
+                // Extract color and type from the sprite name
+                // string[] parts = cardName.Split('_');
+                // Card.CardColor color = (Card.CardColor)System.Enum.Parse(typeof(Card.CardColor), parts[0]);
+
+                // Card.CardType type;
+                // int number = -1;
+
+                // if (parts.Length == 2 && int.TryParse(parts[1], out number))
+                // {
+                //     type = Card.CardType.Number;
+                // }
+                // else
+                // {
+                //     type = (Card.CardType)System.Enum.Parse(typeof(Card.CardType), parts[1]); //here
+                // }
+
+                // cardScript.SetCardData(color, type, number, cardSprites[cardName]);
+
+                cardScript.transform.SetParent(drawPile);
+                cardScript.transform.localPosition = Vector3.zero;
+                SpriteRenderer spriteRenderer = cardScript.GetComponent<SpriteRenderer>();
+                if (spriteRenderer != null)
+                {
+                    spriteRenderer.sprite = cardBackSprite;
+                    spriteRenderer.sortingOrder = i;
+                }
+                cardScript.gameObject.SetActive(true);
+                shallowDeckListCopy.RemoveAt(j);
+                newDeck.Add(cardScript);
             }
-            card.gameObject.SetActive(true);
+            else
+            {
+                Debug.LogError($"Card sprite not found for: {cardName}");
+            }
+            i += 1;
+
         }
+        deck = newDeck;
+        
+
+
     }
 
-    public void UpdateDeck()
-    {
-        for (int i = 0; i < deck.Count; i++)
-        {
-            Card card = deck[i];
-            card.transform.SetParent(drawPile);
-            card.transform.localPosition = Vector3.zero;
-            SpriteRenderer spriteRenderer = card.GetComponent<SpriteRenderer>();
-            if (spriteRenderer != null)
-            {
-                spriteRenderer.sprite = cardBackSprite;
-                spriteRenderer.sortingOrder = i;
-            }
-            card.gameObject.SetActive(true);
-        }
-    }
+    // public void UpdatePlayerCard()
+    // {
+    //     float spacing = 0.3f;
+    //     float startX = -((7 - 1) * spacing) / 2;
+    //     for (int i = 0; i < 7; i++)
+    //     {
+    //         Card card = deck[0];
+    //         deck.RemoveAt(0);
+    //         card.transform.SetParent(playerCards);
+    //         card.transform.localPosition = new Vector3(startX + (i * spacing), 0, 0);
+    //         SpriteRenderer spriteRenderer = card.GetComponent<SpriteRenderer>();
+    //         if (spriteRenderer != null)
+    //         {
+    //             spriteRenderer.sortingOrder = i; // Leftmost = lowest order, Rightmost = highest
+    //         }
+    //         card.gameObject.SetActive(true);
+
+    //     }
+    // }
+
+    // public void UpdateDeck()
+    // {
+    //     for (int i = 0; i < deck.Count; i++)
+    //     {
+    //         Card card = deck[i];
+    //         card.transform.SetParent(drawPile);
+    //         card.transform.localPosition = Vector3.zero;
+    //         SpriteRenderer spriteRenderer = card.GetComponent<SpriteRenderer>();
+    //         if (spriteRenderer != null)
+    //         {
+    //             spriteRenderer.sprite = cardBackSprite;
+    //             spriteRenderer.sortingOrder = i;
+    //         }
+    //         card.gameObject.SetActive(true);
+    //     }
+    // }
 
 
 

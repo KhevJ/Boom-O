@@ -179,7 +179,7 @@ function handleDrawCard(socket, data) {
 }
 
 function handleTopCard(socket, data) {
-    console.log("Server said received top card:", data);
+    console.log(" top card:", data);
     // ! should be broacast to everyone except the host
     const room = rooms.get(data.roomId);
     const roomUpdate = {
@@ -217,7 +217,7 @@ function handleSendDeck(socket, data) {
         io.to(player.id).emit("playerCardsSaved", playerHands[player.id]); //each player gets their hand
     }
     // ! should be broacast to everyone except the host Done Brother
-    io.to(data.roomId).emit("savedDeck", deck) //send deck to everyone
+    io.to(data.roomId).emit("deckSaved", deck) //send deck to everyone
 }
 
 function handleSendPlayerCards(socket, data) {

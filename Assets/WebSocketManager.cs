@@ -102,16 +102,16 @@ public class WebSocketManager : MonoBehaviour
 
         socket.On("deckSaved", (response) =>
         {
-            Debug.Log(response.GetValue<List<string>>());
+            
             deck = response.GetValue<List<string>>();
-            // Debug.Log("Server responded: Deck saved successfully!");
+            Debug.Log("Server responded: Deck saved successfully! " + deck.Count);
         });
 
         socket.On("playerCardsSaved", (response) =>
         {
            
             playerCards = response.GetValue<List<string>>();
-            Debug.Log(playerCards.Count);
+            Debug.Log("Server responded: Play Cards saved successfully! " +playerCards.Count);
             // Debug.Log("Server responded: Player cards saved successfully!");
         });
 
@@ -124,7 +124,7 @@ public class WebSocketManager : MonoBehaviour
            topCard = response.GetValue<string>();
             
             
-            // Debug.Log("Server responded: Player cards saved successfully!");
+            Debug.Log("Server responded: Top card saved successfully! " + topCard);
         });
 
         socket.On("roomLength", (response) =>
