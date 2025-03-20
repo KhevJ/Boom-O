@@ -40,17 +40,7 @@ io.on("connection", (socket) => {
     socket.on('createRoom', async (callback) => {
         messageQueue.push({ socket, action: "createRoom", callback });
         processQueue();
-        // const roomId = uuidV4(); // <- 1 create a new uuid
-        // await socket.join(roomId); // <- 2 make creating user join the room
-
-        // // set roomId as a key and roomData including players as value in the map
-        // rooms.set(roomId, { // <- 3
-        //     roomId,
-        //     players: [{ id: socket.id, username: socket.data?.username }]
-        // });
-        // // returns Map(1){'2b5b51a9-707b-42d6-9da8-dc19f863c0d0' => [{id: 'socketid', username: 'username1'}]}
-
-        // callback(roomId);
+        
     });
 
     socket.on('joinRoom', async (data, callback) => {
@@ -114,9 +104,12 @@ async function processQueue() {
             //const roomId = uuidV4();
             const roomId = "Khevin's Room"
             await socket.join(roomId);
+            let reverse = 1;
             rooms.set(roomId, {
                 roomId,
-                players: [{ id: socket.id }]
+                players: [{ id: socket.id }],
+                reverse// for when we need to reverse the order of player 
+                // did you know yugioh is the best turn based game
             });
 
             console.log(`Room created: ${roomId}`);
@@ -186,17 +179,45 @@ function handleDrawCard(socket, data) {
 }
 
 function handleTopCard(socket, data) {
-    gameObjects["topCard"] = data;
     console.log("Server said received top card:", data);
     // ! should be broacast to everyone except the host
-    socket.emit('topCardUpdate', "Server said The top card is " + data);
+    const room = rooms.get(data.roomId);
+    const roomUpdate = {
+        ...room,
+        topCard: data.topCard
+    };
+    rooms.set(data.roomId, roomUpdate);
+
+    // console.log(rooms.get(data.roomId));
+    socket.broadcast.to(data.roomId).emit('topCardUpdate', data.topCard);
+
 }
 
 function handleSendDeck(socket, data) {
     console.log("Received deck:", data);
-    gameObjects["deck"] = data;
-    // ! should be broacast to everyone except the host
-    socket.emit('deckSaved', "Server said Yugioh is better than UNO");
+    const room = rooms.get(data.roomId);
+    let deck = [...data.deck]; 
+    gameObjects["deck"] = deck; //! delete this later this is just for testing drawing when drawing is not fully implemented
+    const playerHands = {};
+
+    for (const player of room.players) { //player here is the socket
+        playerHands[player.id] = deck.splice(0, 7); //each player gets 7 cards
+    }
+
+    const roomUpdate = {
+        ...room,
+        deck: deck,
+        playerHands: playerHands
+    };
+    rooms.set(data.roomId, roomUpdate);
+
+    console.log(rooms.get(data.roomId));
+
+    for (const player of room.players) {
+        io.to(player.id).emit("playerCardsSaved", playerHands[player.id]); //each player gets their hand
+    }
+    // ! should be broacast to everyone except the host Done Brother
+    io.to(data.roomId).emit("savedDeck", deck) //send deck to everyone
 }
 
 function handleSendPlayerCards(socket, data) {

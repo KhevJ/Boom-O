@@ -1,5 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
+using Mirror.Examples.MultipleMatch;
+using UnityEditor.Tilemaps;
 using UnityEngine;
 
 
@@ -18,7 +20,9 @@ public class GameManager : MonoBehaviour
     public Transform discardPile;
     public GameObject colorPickerUI;
 
-    
+    public List<KeyValuePair<string, GameObject>> UNODeckList = new();
+
+
     void Start()
     {
         StartCoroutine(InitializeGame());
@@ -27,48 +31,130 @@ public class GameManager : MonoBehaviour
     IEnumerator InitializeGame()
     {
         // yield return StartCoroutine(InitializeWebSocketCoroutine()); // wait for connection
-        while (WebSocketManager.Instance == null || !WebSocketManager.Instance.connected)
+        while (WebSocketManager.Instance == null || !WebSocketManager.Instance.connected || string.IsNullOrEmpty(WebSocketManager.Instance.roomId))
         {
             yield return null; // wait till connection is made
         }
         LoadCardSprites();
-        InitializeDeck(); // should be when firt client joins
-        ShuffleDeck(); // should be when firt client joins
-        DealCards(); // would be in all clients 
+        InitializeDeck();
 
-        //Deal Cards() include sending top card to server
+        //room creator does this
+        if (WebSocketManager.Instance.host)
+        {
+            //InitializeDeck(); // should be when firt client joins
+            ShuffleDeck(); // should be when firt client joins
+            DealCards(); //edited that for top card only
+            SendDeck();
+        }
+        
 
-        SendDeck(); // should be when first client joins
-        //find a way to set deck when other clients join
-        SendPlayerCards(); 
+        while (WebSocketManager.Instance.deck.Count > 0 || WebSocketManager.Instance.playerCards.Count > 0 || string.IsNullOrEmpty(WebSocketManager.Instance.topCard))
+        {
+            yield return null;
+        }
+        //Debug.Log(WebSocketManager.Instance.topCard);
+
+        //convert string of cards to deck
+        // convert string of cards to playcards
+        ConvertStringToPlayerCards(WebSocketManager.Instance.playerCards);
+
+
+
+        // convert top card to topCard
+        if (!WebSocketManager.Instance.host)
+        {
+            string cardName = WebSocketManager.Instance.topCard;
+            if (cardSprites.ContainsKey(cardName))
+            {
+                GameObject cardObject = null;
+                foreach (var pair in UNODeckList)
+                {
+                    if (pair.Key == cardName && !pair.Value.activeSelf)
+                    {
+                        cardObject = pair.Value;
+                        break;
+                    }
+                }
+                Card cardScript = cardObject.GetComponent<Card>();
+                string[] parts = cardName.Split('_');
+                Card.CardColor color = (Card.CardColor)System.Enum.Parse(typeof(Card.CardColor), parts[0]);
+
+                Card.CardType type;
+                int number = -1;
+
+                if (parts.Length == 2 && int.TryParse(parts[1], out number))
+                {
+                    type = Card.CardType.Number;
+                }
+                else
+                {
+                    type = (Card.CardType)System.Enum.Parse(typeof(Card.CardType), parts[1]);
+                }
+
+                cardScript.SetCardData(color, type, number, cardSprites[cardName]);
+
+                cardScript.transform.SetParent(discardPile);
+
+                cardScript.transform.localPosition = Vector3.zero;
+                topCard = cardScript;
+                cardScript.gameObject.SetActive(true);
+            }
+        }
+
+
+
+
+
+
+
+
+
+        // UpdateDrawPile();
+        // UpdatePlayerCard();
+
+        // DealCards();
+        // host sends top card and shuffled deck
+
+        // Deal Cards() include sending top card to server
+
+        // SendDeck(); // should be when first client joins
+        // find a way to set deck when other clients join
+        // SendPlayerCards();
     }
 
     public void TestButton()
     {
         Debug.Log("Button Clicked!");
     }
-    void SendDeck()
+
+    public List<string> ConvertCardstoString(List<Card> cards)
     {
-        
-        List<string> string_deck = new(); //names of cards as string Note: can use new() to instanstiate
-        
-
-
-        foreach (Card card in deck)
+        List<string> string_cards = new();
+        foreach (Card card in cards)
         {
             string spriteName = GetSpriteName(card.color, card.type, card.number);
-            string_deck.Add(spriteName);
+            string_cards.Add(spriteName);
         }
+        return string_cards;
 
-        
-        WebSocketManager.Instance.SendData("sendDeck", string_deck );
+    }
+    void SendDeck()
+    {
+
+        List<string> string_deck = ConvertCardstoString(deck); //names of cards as string Note: can use new() to instanstiate
+        var data = new Dictionary<string, object>
+        {
+            { "roomId", WebSocketManager.Instance.roomId },
+            { "deck", string_deck }
+        };
+        WebSocketManager.Instance.SendData("sendDeck", data);
     }
 
-    
+
 
     void SendPlayerCards()
     {
-    
+
         List<string> cards = new List<string>();
 
         foreach (Transform cardTransform in playerCards)
@@ -82,7 +168,7 @@ public class GameManager : MonoBehaviour
         }
 
 
-        WebSocketManager.Instance.SendData("sendPlayerCards",cards);
+        WebSocketManager.Instance.SendData("sendPlayerCards", cards);
     }
 
     void LoadCardSprites()
@@ -129,12 +215,15 @@ public class GameManager : MonoBehaviour
     {
         GameObject cardObject = Instantiate(cardPrefab);
         Card card = cardObject.GetComponent<Card>();
+
         string spriteName = GetSpriteName(color, type, number);
         Sprite cardSprite = cardSprites.ContainsKey(spriteName) ? cardSprites[spriteName] : null;
         card.SetCardData(color, type, number, cardSprite);
         cardObject.name = spriteName;
         deck.Add(card);
         cardObject.SetActive(false);
+        UNODeckList.Add(new KeyValuePair<string, GameObject>(spriteName, cardObject));
+        
     }
 
     void ShuffleDeck()
@@ -148,7 +237,7 @@ public class GameManager : MonoBehaviour
 
     void DealCards()
     {
-        
+
         float spacing = 0.3f;
         float startX = -((7 - 1) * spacing) / 2;
 
@@ -168,7 +257,12 @@ public class GameManager : MonoBehaviour
         {
             topCard = deck[index];
             WebSocketManager.Instance.topCard = GetSpriteName(topCard.color, topCard.type, topCard.number); // update the top card of websocket
-            WebSocketManager.Instance.SendData("sendTopCard", GetSpriteName(topCard.color, topCard.type, topCard.number)); //send top card to server
+            var data = new Dictionary<string, object>
+            {
+                { "roomId", WebSocketManager.Instance.roomId },
+                { "topCard",  GetSpriteName(topCard.color, topCard.type, topCard.number) }
+            };
+            WebSocketManager.Instance.SendData("sendTopCard", data); //send top card to server
             deck.RemoveAt(index);
         }
         else
@@ -185,34 +279,34 @@ public class GameManager : MonoBehaviour
         topCard.transform.SetParent(discardPile);
         topCard.transform.localPosition = Vector3.zero;
         topCard.gameObject.SetActive(true);
-        for (int i = 0; i < 7; i++)
-        {
-            Card card = deck[0];
-            deck.RemoveAt(0);
-            card.transform.SetParent(playerCards);
-            card.transform.localPosition = new Vector3(startX + (i * spacing), 0, 0);
-            SpriteRenderer spriteRenderer = card.GetComponent<SpriteRenderer>();
-            if (spriteRenderer != null)
-            {
-                spriteRenderer.sortingOrder = i; // Leftmost = lowest order, Rightmost = highest
-            }
-            card.gameObject.SetActive(true);
-        }
+        // for (int i = 0; i < 7; i++)
+        // {
+        //     Card card = deck[0];
+        //     deck.RemoveAt(0);
+        //     card.transform.SetParent(playerCards);
+        //     card.transform.localPosition = new Vector3(startX + (i * spacing), 0, 0);
+        //     SpriteRenderer spriteRenderer = card.GetComponent<SpriteRenderer>();
+        //     if (spriteRenderer != null)
+        //     {
+        //         spriteRenderer.sortingOrder = i; // Leftmost = lowest order, Rightmost = highest
+        //     }
+        //     card.gameObject.SetActive(true);
+        // }
 
-        for (int i = 0; i < deck.Count; i++)
-        {
-            Card card = deck[i];
-            card.transform.SetParent(drawPile);
-            card.transform.localPosition = Vector3.zero;
-            SpriteRenderer spriteRenderer = card.GetComponent<SpriteRenderer>();
-            if (spriteRenderer != null)
-            {
-                spriteRenderer.sprite = cardBackSprite;
-                spriteRenderer.sortingOrder = i;
-            }
-            card.gameObject.SetActive(true);
-        }
-        
+        // for (int i = 0; i < deck.Count; i++)
+        // {
+        //     Card card = deck[i];
+        //     card.transform.SetParent(drawPile);
+        //     card.transform.localPosition = Vector3.zero;
+        //     SpriteRenderer spriteRenderer = card.GetComponent<SpriteRenderer>();
+        //     if (spriteRenderer != null)
+        //     {
+        //         spriteRenderer.sprite = cardBackSprite;
+        //         spriteRenderer.sortingOrder = i;
+        //     }
+        //     card.gameObject.SetActive(true);
+        // }
+
     }
 
     public string GetSpriteName(Card.CardColor color, Card.CardType type, int number)
@@ -345,7 +439,134 @@ public class GameManager : MonoBehaviour
         colorPickerUI.SetActive(false); // Hide color picker UI
     }
 
-    private  void OnApplicationQuit()
+
+
+    // void Update()
+    // {
+
+    //     if (WebSocketManager.Instance.topCard != GetSpriteName(this.topCard.color, this.topCard.type, this.topCard.number))
+    //     {
+    //         //this.topCard shoudl become what the WebSocketManager is
+    //     }
+
+    //     //implement same deck across all users
+    //     //this one is gonna be hard man
+    //     //why am I doing this, man
+    //     // Host sends deck to backend 
+    //     // backend assigns player cards to all players
+    //     // top card on UI should be fine Double check that 
+    //     // each one will receive their player cards
+    //     // deck is stored and sent to all players
+    //     // deck of string cards need to get converted to cards
+    //     // playerCards of string cards need to get converted to cards
+
+
+
+    //     //implement turn based feature
+    //     // do that after synchronizing deck
+
+
+    // }
+
+
+    public void ConvertStringToPlayerCards(List<string> cardNames)
+    {
+        float spacing = 0.3f;
+        float startX = -((7 - 1) * spacing) / 2;
+        int i = 0;
+        foreach (string cardName in cardNames)
+        {
+            Debug.Log(i);
+            Debug.Log(cardNames);
+            if (cardSprites.ContainsKey(cardName))
+            {
+
+                GameObject cardObject = null;
+                foreach (var pair in UNODeckList)
+                {
+                    if (pair.Key == cardName && !pair.Value.activeSelf)
+                    {
+                        cardObject = pair.Value;
+                        break;
+                    }
+                }
+                Card cardScript = cardObject.GetComponent<Card>();
+
+                // Extract color and type from the sprite name
+                string[] parts = cardName.Split('_');
+                Card.CardColor color = (Card.CardColor)System.Enum.Parse(typeof(Card.CardColor), parts[0]);
+
+                Card.CardType type;
+                int number = -1;
+
+                if (parts.Length == 2 && int.TryParse(parts[1], out number))
+                {
+                    type = Card.CardType.Number;
+                }
+                else
+                {
+                    type = (Card.CardType)System.Enum.Parse(typeof(Card.CardType), parts[1]);
+                }
+
+                cardScript.SetCardData(color, type, number, cardSprites[cardName]);
+
+                cardObject.transform.SetParent(playerCards);
+                cardObject.transform.localPosition = new Vector3(startX + (i * spacing), 0, 0);
+                SpriteRenderer spriteRenderer = cardObject.GetComponent<SpriteRenderer>();
+                if (spriteRenderer != null)
+                {
+                    spriteRenderer.sortingOrder = i; // Leftmost = lowest order, Rightmost = highest
+                }
+               cardScript.gameObject.SetActive(true);
+            }
+            else
+            {
+                Debug.LogError($"Card sprite not found for: {cardName}");
+            }
+            i = -~i; // finally I get to use this. Learned about this in a youtube vid
+        }
+
+    }
+
+    public void UpdatePlayerCard()
+    {
+        float spacing = 0.3f;
+        float startX = -((7 - 1) * spacing) / 2;
+        for (int i = 0; i < 7; i++)
+        {
+            Card card = deck[0];
+            deck.RemoveAt(0);
+            card.transform.SetParent(playerCards);
+            card.transform.localPosition = new Vector3(startX + (i * spacing), 0, 0);
+            SpriteRenderer spriteRenderer = card.GetComponent<SpriteRenderer>();
+            if (spriteRenderer != null)
+            {
+                spriteRenderer.sortingOrder = i; // Leftmost = lowest order, Rightmost = highest
+            }
+            card.gameObject.SetActive(true);
+        }
+    }
+
+    public void UpdateDeck()
+    {
+        for (int i = 0; i < deck.Count; i++)
+        {
+            Card card = deck[i];
+            card.transform.SetParent(drawPile);
+            card.transform.localPosition = Vector3.zero;
+            SpriteRenderer spriteRenderer = card.GetComponent<SpriteRenderer>();
+            if (spriteRenderer != null)
+            {
+                spriteRenderer.sprite = cardBackSprite;
+                spriteRenderer.sortingOrder = i;
+            }
+            card.gameObject.SetActive(true);
+        }
+    }
+
+
+
+    private void OnApplicationQuit()
     {
         // will prolly be recovering Logic
     }

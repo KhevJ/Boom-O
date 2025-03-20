@@ -52,7 +52,13 @@ public class DragDrop : MonoBehaviour
                 {
                     transform.SetParent(discardPile);
                     WebSocketManager.Instance.topCard = gameManager.GetSpriteName(currentCard.color, currentCard.type, currentCard.number); // update the top card of websocket
-                    WebSocketManager.Instance.SendData("sendTopCard", gameManager.GetSpriteName(currentCard.color, currentCard.type, currentCard.number)); //send top card to server
+                    var data = new Dictionary<string, object>
+                    {
+                        { "roomId", WebSocketManager.Instance.roomId },
+                        { "topCard", gameManager.GetSpriteName(currentCard.color, currentCard.type, currentCard.number)}
+                    };
+                    WebSocketManager.Instance.SendData("sendTopCard", data); //send top card to server meaning to everyone except sender
+                    
                     transform.localPosition = Vector3.zero;
 
                     SpriteRenderer spriteRenderer = GetComponent<SpriteRenderer>();

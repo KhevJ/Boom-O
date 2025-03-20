@@ -45,6 +45,7 @@ public class Menu : MonoBehaviour
     public void closePopup()
     {
         //waitPopup.SetActive(false);
+        
     }
 
     // think of this as join
@@ -54,6 +55,6 @@ public class Menu : MonoBehaviour
         WebSocketManager.Instance.JoinRoom();
         waitPopup.SetActive(true);
         // Application.Quit();
-        Debug.Log("quit game");
+        //Debug.Log("quit game");
     }
 }

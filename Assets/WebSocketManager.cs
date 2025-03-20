@@ -21,6 +21,10 @@ public class WebSocketManager : MonoBehaviour
     public string roomId;
 
     public string topCard;
+
+    public List<string> deck;
+
+    public List<string> playerCards;
     private readonly string serverUrl = "http://localhost:3000";
 
     void Awake()
@@ -98,23 +102,26 @@ public class WebSocketManager : MonoBehaviour
 
         socket.On("deckSaved", (response) =>
         {
-            Debug.Log(response.GetValue<string>());
+            Debug.Log(response.GetValue<List<string>>());
+            deck = response.GetValue<List<string>>();
             // Debug.Log("Server responded: Deck saved successfully!");
         });
 
         socket.On("playerCardsSaved", (response) =>
         {
-            Debug.Log(response.GetValue<string>());
+           
+            playerCards = response.GetValue<List<string>>();
+            Debug.Log(playerCards.Count);
             // Debug.Log("Server responded: Player cards saved successfully!");
         });
 
         socket.On("topCardUpdate", (response) =>
         {
-            Debug.Log(response.GetValue<string>());
+            //Debug.Log(response.GetValue<string>());
             
             
             //trigger the update 
-            topCard = response.GetValue<string>();
+           topCard = response.GetValue<string>();
             
             
             // Debug.Log("Server responded: Player cards saved successfully!");
