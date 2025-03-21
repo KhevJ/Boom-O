@@ -81,6 +81,10 @@ public class GameManager : MonoBehaviour
                 cardScript.transform.SetParent(discardPile);
 
                 cardScript.transform.localPosition = Vector3.zero;
+                if (cardScript.TryGetComponent<SpriteRenderer>(out var spriteRenderer))
+                {
+                    spriteRenderer.sortingOrder = discardPile.childCount;
+                }
                 topCard = cardScript;
                 cardScript.gameObject.SetActive(true);
                 // Debug.Log(UNODeckList[i].Value.GetComponent<Card>().number);
@@ -276,15 +280,12 @@ public class GameManager : MonoBehaviour
             };
             WebSocketManager.Instance.SendData("sendTopCard", data); //send top card to server
             deck.RemoveAt(index);
-            //UNODeckList.RemoveAt(index); //? Red_0 is tripping Why though it is prolly not even Red_0
-            //? oh i see now after 5 hours, the deck is shuffled bro petit malin
-            //? either you shuffle or remove at specific 
-            //? specific might be better since UNODeckList.Count != deck.Count
             
+            // the same instance has to be the card
             int j = 0;
             foreach (var pair in UNODeckList)
             {
-                if (pair.Key == GetSpriteName(topCard.color, topCard.type, topCard.number))
+                if (pair.Key == GetSpriteName(topCard.color, topCard.type, topCard.number) && pair.Value.Equals(topCard.gameObject))
                 {
                     break;
                 }
