@@ -1029,9 +1029,8 @@ MonoBehaviour:
   drawPile: {fileID: 505422767}
   cardBackSprite: {fileID: 21300000, guid: 11b4fe304b3feb345b782bc38f89f5da, type: 3}
   topCard: {fileID: 0}
-  discardPile: {fileID: 0}
+  discardPile: {fileID: 1100556596}
   colorPickerUI: {fileID: 1095410799}
-  connected: 1
 --- !u!4 &1232946448
 Transform:
   m_ObjectHideFlags: 0
