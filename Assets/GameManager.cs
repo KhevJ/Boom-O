@@ -20,7 +20,7 @@ public class GameManager : MonoBehaviour
     public Card topCard;
     public Transform discardPile;
     public GameObject colorPickerUI;
-    private bool update = false;
+
 
     public List<KeyValuePair<string, GameObject>> UNODeckList = new();
 
@@ -89,6 +89,7 @@ public class GameManager : MonoBehaviour
                 cardScript.gameObject.SetActive(true);
                 // Debug.Log(UNODeckList[i].Value.GetComponent<Card>().number);
                 UNODeckList.RemoveAt(i);
+                WebSocketManager.Instance.updateTopCard = false;
             }
 
 
@@ -115,7 +116,7 @@ public class GameManager : MonoBehaviour
         ConvertStringToDeckCards(WebSocketManager.Instance.deck);
         Debug.Log("After deck" + UNODeckList.Count);
 
-        update = true;
+
 
 
 
@@ -280,7 +281,7 @@ public class GameManager : MonoBehaviour
             };
             WebSocketManager.Instance.SendData("sendTopCard", data); //send top card to server
             deck.RemoveAt(index);
-            
+
             // the same instance has to be the card
             int j = 0;
             foreach (var pair in UNODeckList)
@@ -386,6 +387,7 @@ public class GameManager : MonoBehaviour
             Transform drawnCard = drawPile.GetChild(0); // Get the top card
             drawnCard.SetParent(playerCards); // Move it to the player's hand
 
+
             // Update card position and visibility
             RealignPlayerCards();
 
@@ -396,8 +398,13 @@ public class GameManager : MonoBehaviour
                 string spriteName = GetSpriteName(cardScript.color, cardScript.type, cardScript.number);
                 if (cardSprites.ContainsKey(spriteName))
                 {
-                    //SendDrawCardMessage(spriteName); //not too sure if this is right place to do that or above
-                    WebSocketManager.Instance.SendData("drawCard", spriteName); //sending  drawn card to server
+                    deck.RemoveAt(0);//remove deck at first index
+                    var data = new Dictionary<string, object>
+                    {
+                        { "roomId", WebSocketManager.Instance.roomId },
+                        { "drawnCard",  spriteName }
+                    };
+                    WebSocketManager.Instance.SendData("drawCard", data); //sending  drawn card to server
                     SpriteRenderer spriteRenderer = drawnCard.GetComponent<SpriteRenderer>();
                     if (spriteRenderer != null)
                     {
@@ -476,65 +483,120 @@ public class GameManager : MonoBehaviour
     {
 
 
-        if (update && !string.IsNullOrEmpty(WebSocketManager.Instance.topCard))
+        if (WebSocketManager.Instance.updateTopCard && !string.IsNullOrEmpty(WebSocketManager.Instance.topCard) && topCard != null)
         {
-            if (WebSocketManager.Instance.topCard != GetSpriteName(topCard.color, topCard.type, topCard.number))
+            //if (WebSocketManager.Instance.topCard != GetSpriteName(topCard.color, topCard.type, topCard.number))
+            //{
+            string cardName = WebSocketManager.Instance.topCard;
+            //this.topCard shoudl become what the WebSocketManager is
+            // there is bound to be 1 card type in  UNODeckist
+            // we need to choose a card that is not in deck
+
+
+            // or else deck gets cut down by 1 card
+            // if you remove the card from UNODeckList when making the deck then you can use UNODeckList
+            // wait if you remvove the card from UNODeckList how are you gonna implement placing cards
+            // oh I see I can add to UNODeckList whenever other player draws yeah that solves a lot
+            // am I missing something
+            // drawing , placing should be taken care of by this strat 
+            // oh i am missing how to rebuild everyhtin when server goes down
+            // yeah replication is gonna be wild
+            // ok let's just try to make it work
+            // need to sleep I do not want to sleep at 8 am again
+            GameObject cardObject = null;
+            int i = 0;
+            foreach (var pair in UNODeckList)
             {
-                Debug.Log(GetSpriteName(this.topCard.color, this.topCard.type, this.topCard.number));
-                Debug.Log(WebSocketManager.Instance.topCard);
-                string cardName = WebSocketManager.Instance.topCard;
-                //this.topCard shoudl become what the WebSocketManager is
-                // there is bound to be 1 card type in  UNODeckist
-                // we need to choose a card that is not in deck
-
-
-                // or else deck gets cut down by 1 card
-                // if you remove the card from UNODeckList when making the deck then you can use UNODeckList
-                // wait if you remvove the card from UNODeckList how are you gonna implement placing cards
-                // oh I see I can add to UNODeckList whenever other player draws yeah that solves a lot
-                // am I missing something
-                // drawing , placing should be taken care of by this strat 
-                // oh i am missing how to rebuild everyhtin when server goes down
-                // yeah replication is gonna be wild
-                // ok let's just try to make it work
-                // need to sleep I do not want to sleep at 8 am again
-                GameObject cardObject = null;
-                int i = 0;
-                foreach (var pair in UNODeckList)
+                if (pair.Key == cardName)
                 {
-                    if (pair.Key == cardName)
+
+                    cardObject = pair.Value;
+
+                    break;
+                }
+                i++;
+            }
+            if (cardObject == null)
+            {
+
+                Debug.Log("null in update top card");
+            }
+            Card cardScript = cardObject.GetComponent<Card>();
+            Debug.Log(cardScript.number);
+            Debug.Log(cardScript.type);
+            cardScript.transform.SetParent(discardPile);
+
+            cardScript.transform.localPosition = Vector3.zero;
+            cardScript.gameObject.SetActive(true);
+            if (cardScript.TryGetComponent<SpriteRenderer>(out var spriteRenderer))
+            {
+                spriteRenderer.sortingOrder = discardPile.childCount;
+            }
+            this.topCard = cardScript;
+
+            UNODeckList.RemoveAt(i);
+            WebSocketManager.Instance.updateTopCard = false;
+            //}
+
+        }
+
+
+        //update the deck when drawing 
+        // player can either draw for turn or put card for turn
+        // Can do that later when making turn based logic
+        // this is to be differentiated since the deck need to update when drawing
+        // deck should be updated for everyone except sender(the one who draws)
+        // Sender:
+        // when a card is drawn, card is added to playerCards Done
+        // player cards for sender in backend needs to be updated Done
+        // deck needs to pop at the beginning Done
+        // should not that different from what we have hopefully
+        // Other players:
+        // when a card is drawn, each of their decks need to pop at the beginning Done
+        // remove from draw pile Done
+        // you can also show the front card before setting it to inactive Done
+        // set active to false Done
+        // append the top card to UNODeckList --> Really important Do not forget Done
+        // this should be it 
+        if (WebSocketManager.Instance.updateDeck && deck != null)
+        {
+
+            Transform drawnCard = drawPile.GetChild(0);
+            drawnCard.SetParent(null);
+
+            Card cardScript = drawnCard.GetComponent<Card>();
+            if (cardScript != null)
+            {
+                string spriteName = GetSpriteName(cardScript.color, cardScript.type, cardScript.number);
+                if (cardSprites.ContainsKey(spriteName))
+                {
+                    deck.RemoveAt(0);//remove deck at first index
+                    SpriteRenderer spriteRenderer = drawnCard.GetComponent<SpriteRenderer>();
+                    if (spriteRenderer != null)
                     {
-
-                        cardObject = pair.Value;
-
-                        break;
+                        spriteRenderer.sprite = cardSprites[spriteName]; // Show the correct front sprite
                     }
-                    i++;
+                    cardScript.gameObject.SetActive(false);
+                    UNODeckList.Add(new KeyValuePair<string, GameObject>(spriteName, cardScript.gameObject));
+                    WebSocketManager.Instance.updateDeck = false;
                 }
-                if (cardObject == null)
+                else
                 {
-
-                    Debug.Log("null in update top card");
+                    Debug.LogError($"Sprite not found: {spriteName}");
                 }
-                Card cardScript = cardObject.GetComponent<Card>();
-                Debug.Log(cardScript.number);
-                Debug.Log(cardScript.type);
-                cardScript.transform.SetParent(discardPile);
-
-                cardScript.transform.localPosition = Vector3.zero;
-                cardScript.gameObject.SetActive(true); 
-                if (cardScript.TryGetComponent<SpriteRenderer>(out var spriteRenderer))
-                {
-                    spriteRenderer.sortingOrder = discardPile.childCount;
-                }
-                this.topCard = cardScript;
-
-                UNODeckList.RemoveAt(i);
-
-
             }
 
         }
+
+
+
+
+
+
+
+
+
+
 
         //implement same deck across all users
         //this one is gonna be hard man
@@ -583,7 +645,6 @@ public class GameManager : MonoBehaviour
                 }
                 if (cardObject == null)
                 {
-
                     Debug.Log(cardName);
                 }
 

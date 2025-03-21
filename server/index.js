@@ -167,21 +167,34 @@ async function processQueue() {
 //example handlers for events 
 function handleDrawCard(socket, data) {
     console.log("Received drawn card:", data);
+    const room = rooms.get(data.roomId);
+    console.log(room);
+    const drawnCard = room.deck.shift();
+    console.log(drawnCard);
+    room.playerHands[socket.id].push(drawnCard);
+    const roomUpdate = {
+        ...room,
+        playerHands: room.playerHands,
+        deck: room.deck
+    };
+    rooms.set(data.roomId, roomUpdate);
+    socket.broadcast.to(data.roomId).emit('drawnCard', drawnCard);
 
-    if (gameObjects.deck) {
-        if (gameObjects.deck.length > 0 && gameObjects.deck[0] == data) {
-            const topCard = gameObjects.deck.shift();
-            //console.log("here")
-            socket.emit('drawnCard', "Server said You drew " + topCard);
-            //here add something to broadcast to all other players in the room/game
-        }
-    }
+
+    // if (gameObjects.deck) {
+    //     if (gameObjects.deck.length > 0 && gameObjects.deck[0] == data) {
+    //         const topCard = gameObjects.deck.shift();
+    //         //console.log("here")
+    //         socket.emit('drawnCard', "Server said You drew " + topCard);
+    //         //here add something to broadcast to all other players in the room/game
+    //     }
+    // }
 }
 
 function handleTopCard(socket, data) {
     console.log(" top card:", data);
-    // ! should be broacast to everyone except the host
     const room = rooms.get(data.roomId);
+    //!need to update players hand
     const roomUpdate = {
         ...room,
         topCard: data.topCard

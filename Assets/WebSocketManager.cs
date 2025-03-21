@@ -22,6 +22,9 @@ public class WebSocketManager : MonoBehaviour
 
     public string topCard;
 
+    public bool updateTopCard = false;
+
+    public bool updateDeck = false; // when card is drawn
     public List<string> deck;
 
     public List<string> playerCards;
@@ -98,6 +101,7 @@ public class WebSocketManager : MonoBehaviour
         socket.On("drawnCard", (response) =>
         {
             Debug.Log(response.GetValue<string>());
+            updateDeck = true;
             // Debug.Log("Server responded: Card drawn successfully!");
         });
 
@@ -123,6 +127,7 @@ public class WebSocketManager : MonoBehaviour
 
             //trigger the update 
             topCard = response.GetValue<string>();
+            updateTopCard = true;
 
 
             Debug.Log("Server responded: Top card saved successfully! " + topCard);
