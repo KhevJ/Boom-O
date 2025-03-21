@@ -23,7 +23,7 @@ io.use((socket, next) => {
 });
 
 
-const gameObjects = {}; // store game state
+// const gameObjects = {}; // store game state
 const messageQueue = []; // queue to process messages in order
 let isProcessing = false;
 const rooms = new Map();// will store all rooms
@@ -40,7 +40,7 @@ io.on("connection", (socket) => {
     socket.on('createRoom', async (callback) => {
         messageQueue.push({ socket, action: "createRoom", callback });
         processQueue();
-        
+
     });
 
     socket.on('joinRoom', async (data, callback) => {
@@ -104,7 +104,7 @@ async function processQueue() {
             //const roomId = uuidV4();
             const roomId = "Khevin's Room"
             await socket.join(roomId);
-            let reverse = 1;
+            let reverse = false;
             rooms.set(roomId, {
                 roomId,
                 players: [{ id: socket.id }],
@@ -124,7 +124,7 @@ async function processQueue() {
             const room = rooms.get(data);
             console.log(room);
             // add the joining user's data to the list of players in the room
-            if ( room && room.players.length < 2) {
+            if (room && room.players.length < 2) {
                 await socket.join(data); // make the joining client join the room
                 const roomUpdate = {
                     ...room,
@@ -140,7 +140,7 @@ async function processQueue() {
                 // console.log(socket.id)
                 // console.log(room.players)
                 // console.log("Room length " + room.players.length)
-                io.to(data).emit("roomLength", rooms.get(data).players.length )
+                io.to(data).emit("roomLength", rooms.get(data).players.length)
             }
             else {
                 if (callback) {
@@ -194,11 +194,29 @@ function handleDrawCard(socket, data) {
 function handleTopCard(socket, data) {
     console.log(" top card:", data);
     const room = rooms.get(data.roomId);
-    //!need to update players hand
-    const roomUpdate = {
-        ...room,
-        topCard: data.topCard
-    };
+    //!need to update players hand except when top card is placed for the first time
+    let roomUpdate;
+    if (!data.firstTime) {
+        const hand = room.playerHands[socket.id];
+        const index = hand.indexOf(data.topCard);
+
+        if (index !== -1) {
+            hand.splice(index, 1);
+        }
+        roomUpdate = {
+            ...room,
+            topCard: data.topCard,
+            playerHands: room.playerHands
+        };
+    }
+    else{
+        roomUpdate = {
+            ...room,
+            topCard: data.topCard
+        };
+    }
+
+    
     rooms.set(data.roomId, roomUpdate);
 
     // console.log(rooms.get(data.roomId));
@@ -209,8 +227,8 @@ function handleTopCard(socket, data) {
 function handleSendDeck(socket, data) {
     console.log("Received deck:", data);
     const room = rooms.get(data.roomId);
-    let deck = [...data.deck]; 
-    gameObjects["deck"] = deck; //! delete this later this is just for testing drawing when drawing is not fully implemented
+    let deck = [...data.deck];
+    // gameObjects["deck"] = deck; //! delete this later this is just for testing drawing when drawing is not fully implemented
     const playerHands = {};
 
     for (const player of room.players) { //player here is the socket
@@ -235,7 +253,7 @@ function handleSendDeck(socket, data) {
 
 function handleSendPlayerCards(socket, data) {
     console.log("Received deck:", data);
-    gameObjects["playerHand"] = data;
+    // gameObjects["playerHand"] = data;
     socket.emit('playerCardsSaved', "Server said why play UNO when Yugioh exists");
 }
 

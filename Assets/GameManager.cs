@@ -277,7 +277,8 @@ public class GameManager : MonoBehaviour
             var data = new Dictionary<string, object>
             {
                 { "roomId", WebSocketManager.Instance.roomId },
-                { "topCard",  GetSpriteName(topCard.color, topCard.type, topCard.number) }
+                { "topCard",  GetSpriteName(topCard.color, topCard.type, topCard.number) },
+                { "firstTime", "firstTime"}
             };
             WebSocketManager.Instance.SendData("sendTopCard", data); //send top card to server
             deck.RemoveAt(index);
