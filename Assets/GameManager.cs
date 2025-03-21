@@ -20,6 +20,7 @@ public class GameManager : MonoBehaviour
     public Card topCard;
     public Transform discardPile;
     public GameObject colorPickerUI;
+    private bool update = false;
 
     public List<KeyValuePair<string, GameObject>> UNODeckList = new();
 
@@ -53,20 +54,12 @@ public class GameManager : MonoBehaviour
         {
             yield return null;
         }
-        //Debug.Log(WebSocketManager.Instance.topCard);
-
-        //convert string of cards to deck
-        // convert string of cards to playcards
-
-        // ConvertStringToPlayerCards(WebSocketManager.Instance.playerCards);
-
-
 
         // convert top card to topCard
         if (!WebSocketManager.Instance.host)
         {
             string cardName = WebSocketManager.Instance.topCard;
-            
+
 
             if (cardSprites.ContainsKey(cardName))
             {
@@ -76,7 +69,7 @@ public class GameManager : MonoBehaviour
                 {
                     if (pair.Key == cardName)
                     {
-                        
+
                         cardObject = pair.Value;
 
                         break;
@@ -84,22 +77,41 @@ public class GameManager : MonoBehaviour
                     i++;
                 }
                 Card cardScript = cardObject.GetComponent<Card>();
-                Debug.Log(cardScript.number);
+                //Debug.Log(cardScript.number);
                 cardScript.transform.SetParent(discardPile);
 
                 cardScript.transform.localPosition = Vector3.zero;
                 topCard = cardScript;
                 cardScript.gameObject.SetActive(true);
+                // Debug.Log(UNODeckList[i].Value.GetComponent<Card>().number);
                 UNODeckList.RemoveAt(i);
             }
-            
-            
-            
+
+
+
         }
+        // GameObject card = null;
+        // int j = 0;
+        // foreach (var pair in UNODeckList)
+        // {
+        //     if (pair.Key == "Red_0")
+        //     {
+
+        //         card= pair.Value;
+        //         Debug.Log("j=" + j);
+
+        //         break;
+        //     }
+        //     j++;
+        // }
+        // Debug.Log(UNODeckList[j].Value.GetComponent<Card>().number);
+        Debug.Log("Before play cards" + UNODeckList.Count);
         ConvertStringToPlayerCards(WebSocketManager.Instance.playerCards);
+        Debug.Log("After play cards" + UNODeckList.Count);
         ConvertStringToDeckCards(WebSocketManager.Instance.deck);
+        Debug.Log("After deck" + UNODeckList.Count);
 
-
+        update = true;
 
 
 
@@ -147,6 +159,8 @@ public class GameManager : MonoBehaviour
         };
         WebSocketManager.Instance.SendData("sendDeck", data);
     }
+
+
 
 
 
@@ -262,6 +276,24 @@ public class GameManager : MonoBehaviour
             };
             WebSocketManager.Instance.SendData("sendTopCard", data); //send top card to server
             deck.RemoveAt(index);
+            //UNODeckList.RemoveAt(index); //? Red_0 is tripping Why though it is prolly not even Red_0
+            //? oh i see now after 5 hours, the deck is shuffled bro petit malin
+            //? either you shuffle or remove at specific 
+            //? specific might be better since UNODeckList.Count != deck.Count
+            
+            int j = 0;
+            foreach (var pair in UNODeckList)
+            {
+                if (pair.Key == GetSpriteName(topCard.color, topCard.type, topCard.number))
+                {
+                    break;
+                }
+                j++;
+            }
+            UNODeckList.RemoveAt(j);
+            Debug.Log(UNODeckList[j].Value.GetComponent<Card>().number);
+
+
         }
         else
         {
@@ -439,32 +471,88 @@ public class GameManager : MonoBehaviour
 
 
 
-    // void Update()
-    // {
-
-    //     if (WebSocketManager.Instance.topCard != GetSpriteName(this.topCard.color, this.topCard.type, this.topCard.number))
-    //     {
-    //         //this.topCard shoudl become what the WebSocketManager is
-    //     }
-
-    //     //implement same deck across all users
-    //     //this one is gonna be hard man
-    //     //why am I doing this, man
-    //     // Host sends deck to backend 
-    //     // backend assigns player cards to all players
-    //     // top card on UI should be fine Double check that 
-    //     // each one will receive their player cards
-    //     // deck is stored and sent to all players
-    //     // deck of string cards need to get converted to cards
-    //     // playerCards of string cards need to get converted to cards
+    void Update()
+    {
 
 
+        if (update && !string.IsNullOrEmpty(WebSocketManager.Instance.topCard))
+        {
+            if (WebSocketManager.Instance.topCard != GetSpriteName(topCard.color, topCard.type, topCard.number))
+            {
+                Debug.Log(GetSpriteName(this.topCard.color, this.topCard.type, this.topCard.number));
+                Debug.Log(WebSocketManager.Instance.topCard);
+                string cardName = WebSocketManager.Instance.topCard;
+                //this.topCard shoudl become what the WebSocketManager is
+                // there is bound to be 1 card type in  UNODeckist
+                // we need to choose a card that is not in deck
 
-    //     //implement turn based feature
-    //     // do that after synchronizing deck
+
+                // or else deck gets cut down by 1 card
+                // if you remove the card from UNODeckList when making the deck then you can use UNODeckList
+                // wait if you remvove the card from UNODeckList how are you gonna implement placing cards
+                // oh I see I can add to UNODeckList whenever other player draws yeah that solves a lot
+                // am I missing something
+                // drawing , placing should be taken care of by this strat 
+                // oh i am missing how to rebuild everyhtin when server goes down
+                // yeah replication is gonna be wild
+                // ok let's just try to make it work
+                // need to sleep I do not want to sleep at 8 am again
+                GameObject cardObject = null;
+                int i = 0;
+                foreach (var pair in UNODeckList)
+                {
+                    if (pair.Key == cardName)
+                    {
+
+                        cardObject = pair.Value;
+
+                        break;
+                    }
+                    i++;
+                }
+                if (cardObject == null)
+                {
+
+                    Debug.Log("null in update top card");
+                }
+                Card cardScript = cardObject.GetComponent<Card>();
+                Debug.Log(cardScript.number);
+                Debug.Log(cardScript.type);
+                cardScript.transform.SetParent(discardPile);
+
+                cardScript.transform.localPosition = Vector3.zero;
+                cardScript.gameObject.SetActive(true); 
+                if (cardScript.TryGetComponent<SpriteRenderer>(out var spriteRenderer))
+                {
+                    spriteRenderer.sortingOrder = discardPile.childCount;
+                }
+                this.topCard = cardScript;
+
+                UNODeckList.RemoveAt(i);
 
 
-    // }
+            }
+
+        }
+
+        //implement same deck across all users
+        //this one is gonna be hard man
+        //why am I doing this
+        // Host sends deck to backend 
+        // backend assigns player cards to all players
+        // top card on UI should be fine Double check that 
+        // each one will receive their player cards
+        // deck is stored and sent to all players
+        // deck of string cards need to get converted to cards
+        // playerCards of string cards need to get converted to cards
+
+
+
+        //implement turn based feature
+        // do that after synchronizing deck
+
+
+    }
 
 
     public void ConvertStringToPlayerCards(List<string> cardNames)
@@ -478,51 +566,33 @@ public class GameManager : MonoBehaviour
 
             if (cardSprites.ContainsKey(cardName))
             {
-                
-        
+
+
                 GameObject cardObject = null;
                 int j = 0;
                 foreach (var pair in UNODeckList)
                 {
-                    if (pair.Key == cardName  && pair.Value != null)
+                    if (pair.Key == cardName && pair.Value != null)
                     {
                         cardObject = pair.Value;
 
                         break;
                     }
-                    j+=1;
+                    j += 1;
                 }
-                if(cardObject == null ){
-                    
+                if (cardObject == null)
+                {
+
                     Debug.Log(cardName);
                 }
 
                 Card cardScript = cardObject.GetComponent<Card>();
-
-                // Extract color and type from the sprite name
-                // string[] parts = cardName.Split('_');
-                // Card.CardColor color = (Card.CardColor)System.Enum.Parse(typeof(Card.CardColor), parts[0]);
-
-                // Card.CardType type;
-                // int number = -1;
-
-                // if (parts.Length == 2 && int.TryParse(parts[1], out number))
-                // {
-                //     type = Card.CardType.Number;
-                // }
-                // else
-                // {
-                //     type = (Card.CardType)System.Enum.Parse(typeof(Card.CardType), parts[1]);
-                // }
-
-                // cardScript.SetCardData(color, type, number, cardSprites[cardName]);
-
                 cardObject.transform.SetParent(playerCards);
                 cardObject.transform.localPosition = new Vector3(startX + (i * spacing), 0, 0);
                 SpriteRenderer spriteRenderer = cardObject.GetComponent<SpriteRenderer>();
                 if (spriteRenderer != null)
                 {
-                    spriteRenderer.sortingOrder = i; // Leftmost = lowest order, Rightmost = highest
+                    spriteRenderer.sortingOrder = i;
                 }
                 cardScript.gameObject.SetActive(true);
                 UNODeckList.RemoveAt(j);
@@ -534,57 +604,39 @@ public class GameManager : MonoBehaviour
             i += 1;
         }
 
-        //UNODeckList.RemoveAt(i-1);
+
 
 
     }
 
     public void ConvertStringToDeckCards(List<string> cardNames)
     {
-        List<KeyValuePair<string, GameObject>> shallowDeckListCopy = UNODeckList.ToList();
+        // List<KeyValuePair<string, GameObject>> shallowDeckListCopy = UNODeckList.ToList();
         List<Card> newDeck = new();
         int i = 0;
         foreach (string cardName in cardNames)
         {
-            int j =0;
+            int j = 0;
             if (cardSprites.ContainsKey(cardName))
             {
 
                 GameObject cardObject = null;
-                foreach (var pair in shallowDeckListCopy)
+                foreach (var pair in UNODeckList)
                 {
                     if (pair.Key == cardName && pair.Value != null)
                     {
                         cardObject = pair.Value;
-                        
+
                         break;
                     }
-                    j+=1;
+                    j += 1;
                 }
-                if(cardObject == null ){
-                    
+                if (cardObject == null)
+                {
+
                     Debug.Log(cardName);
                 }
                 Card cardScript = cardObject.GetComponent<Card>();
-
-                // Extract color and type from the sprite name
-                // string[] parts = cardName.Split('_');
-                // Card.CardColor color = (Card.CardColor)System.Enum.Parse(typeof(Card.CardColor), parts[0]);
-
-                // Card.CardType type;
-                // int number = -1;
-
-                // if (parts.Length == 2 && int.TryParse(parts[1], out number))
-                // {
-                //     type = Card.CardType.Number;
-                // }
-                // else
-                // {
-                //     type = (Card.CardType)System.Enum.Parse(typeof(Card.CardType), parts[1]); //here
-                // }
-
-                // cardScript.SetCardData(color, type, number, cardSprites[cardName]);
-
                 cardScript.transform.SetParent(drawPile);
                 cardScript.transform.localPosition = Vector3.zero;
                 SpriteRenderer spriteRenderer = cardScript.GetComponent<SpriteRenderer>();
@@ -594,7 +646,7 @@ public class GameManager : MonoBehaviour
                     spriteRenderer.sortingOrder = i;
                 }
                 cardScript.gameObject.SetActive(true);
-                shallowDeckListCopy.RemoveAt(j);
+                UNODeckList.RemoveAt(j);
                 newDeck.Add(cardScript);
             }
             else
@@ -605,7 +657,7 @@ public class GameManager : MonoBehaviour
 
         }
         deck = newDeck;
-        
+
 
 
     }
@@ -651,7 +703,8 @@ public class GameManager : MonoBehaviour
 
     private void OnApplicationQuit()
     {
-        // will prolly be recovering Logic
+
+
     }
 
 }

@@ -60,7 +60,7 @@ public class WebSocketManager : MonoBehaviour
             Transport = SocketIOClient.Transport.TransportProtocol.WebSocket
         })
         {
-        
+
             JsonSerializer = new NewtonsoftJsonSerializer() // turns objects into json
         };
 
@@ -86,66 +86,65 @@ public class WebSocketManager : MonoBehaviour
         {
             Debug.Log($"{DateTime.Now} Reconnecting: attempt = {e}");
         };
-        
 
 
-        socket.On("welcome", (response) => {
-            Debug.Log(response.GetValue<string>()); 
-            
+
+        socket.On("welcome", (response) =>
+        {
+            Debug.Log(response.GetValue<string>());
+
         });
-        
+
         socket.On("drawnCard", (response) =>
         {
-            Debug.Log(response.GetValue<string>()); 
+            Debug.Log(response.GetValue<string>());
             // Debug.Log("Server responded: Card drawn successfully!");
         });
 
         socket.On("deckSaved", (response) =>
         {
-            
+
             deck = response.GetValue<List<string>>();
             Debug.Log("Server responded: Deck saved successfully! " + deck.Count);
         });
 
         socket.On("playerCardsSaved", (response) =>
         {
-           
+
             playerCards = response.GetValue<List<string>>();
-            Debug.Log("Server responded: Play Cards saved successfully! " +playerCards.Count);
+            Debug.Log("Server responded: Play Cards saved successfully! " + playerCards.Count);
             // Debug.Log("Server responded: Player cards saved successfully!");
         });
 
         socket.On("topCardUpdate", (response) =>
         {
             //Debug.Log(response.GetValue<string>());
-            
-            
+
+
             //trigger the update 
-           topCard = response.GetValue<string>();
-            
-            
+            topCard = response.GetValue<string>();
+
+
             Debug.Log("Server responded: Top card saved successfully! " + topCard);
         });
 
         socket.On("roomLength", (response) =>
         {
-            Debug.Log(response.GetValue<string>());
-            
-            
+
             //trigger the update 
             roomLength = response.GetValue<int>();
-            
-            
+
+
             // Debug.Log("Server responded: Player cards saved successfully!");
         });
 
-        
+
         socket.Connect();
     }
 
     public void SendData(string action, object data)
     {
-        
+
         if (socket != null && connected)
         {
             socket.Emit(action, data);
@@ -158,7 +157,7 @@ public class WebSocketManager : MonoBehaviour
 
     public async void CreateRoom()
     {
-        await socket.EmitAsync("createRoom",  response =>
+        await socket.EmitAsync("createRoom", response =>
         {
             if (response.Count > 0)
             {
@@ -170,27 +169,27 @@ public class WebSocketManager : MonoBehaviour
             else
             {
                 Debug.LogWarning("No roomId received from server!");
-                
+
             }
         });
     }
 
-    public async void JoinRoom(string room="Khevin's Room")
+    public async void JoinRoom(string room = "Khevin's Room")
     {
-        
-        await socket.EmitAsync("joinRoom",  response =>
+
+        await socket.EmitAsync("joinRoom", response =>
         {
             if (response.Count > 0)
             {
                 roomId = response.GetValue<string>();
-                if(roomId == "Error") Application.Quit();
-                
+                if (roomId == "Error") Application.Quit();
+
                 Debug.Log("Room joined with ID from join: " + roomId);
             }
             else
             {
                 Debug.LogWarning("No roomId received from server!");
-                
+
             }
         }, room);
     }
