@@ -28,7 +28,7 @@ public class WebSocketManager : MonoBehaviour
     public List<string> deck;
 
     public List<string> playerCards;
-    private readonly string serverUrl = "http://localhost:3000";
+    private readonly string serverUrl = "http://localhost:3000"; //change that to a dictionianry
 
     void Awake()
     {
@@ -47,9 +47,9 @@ public class WebSocketManager : MonoBehaviour
         InitializeSocketIO(); // would normally be triggered by first scene
     }
 
-    void InitializeSocketIO()
+    void InitializeSocketIO() // arg = the serverId 
     {
-        var uri = new Uri(serverUrl);
+        var uri = new Uri(serverUrl); // change that to reading from Hash Map
         socket = new SocketIOUnity(uri, new SocketIOOptions
         {
             Query = new Dictionary<string, string>
@@ -84,6 +84,14 @@ public class WebSocketManager : MonoBehaviour
         socket.OnDisconnected += (sender, e) =>
         {
             Debug.Log("disconnect: " + e);
+            //swap server
+            //socket = null;
+            // have global variable in WebsocketManager called serverId(4,3,2,1)
+            // set that value to 3 say 4 crashed just decrementing
+            // have a dictionary/ hash map that will hash the server id to the url
+            // 
+            // swapServer();
+
         };
         socket.OnReconnectAttempt += (sender, e) =>
         {
@@ -95,6 +103,15 @@ public class WebSocketManager : MonoBehaviour
         socket.On("welcome", (response) =>
         {
             Debug.Log(response.GetValue<string>());
+            //return currentServerId that will get from server
+            // global var serverId from client (3) == currentId from server(2)
+            // do the swap again
+            // what if we have a controller
+            // there is like a socket in between client and server
+            // when there is a disconnection , socket becomes null
+            // we can't talk to anyone
+
+            
 
         });
 
@@ -209,4 +226,45 @@ public class WebSocketManager : MonoBehaviour
         }
     }
 }
+
+
+//public int serverId = -1; 
+//public HashMap<int id, string url>
+
+
+//Pseudocode for reconnection
+
+//? welcome for socket socket.On("Welcome")
+// ! if the serverId in welcome is -1  you just serverId to what the id the server sent
+
+// ring algo did not announce the new leader to 3 yet
+// and we are connecting to 3 on client
+// 3 won't have the updated currentleader which wil be 4
+// id from the server will be 4
+// global var that will have be 4
+// 4(serverId from client) == 4(currentLeader) a recursion till the id is different and not -1
+// ! if the id(4) is the same as the one(4)(serverId -> client variable) that crashes do it recursively till the id is different
+// if serverId is not -1 and diffent , then you call the swapServer  function again
+
+
+// if there is an error do that maybe
+//socket.onDisconnect{
+//  socket = null;
+//  swapServer();
+//}
+
+// swapServer(){
+// 
+//  InitializeSocket(int id);
+//  serverId
+// }
+
+// oh i see what you can do now,
+// on connection have a temporary varialbe
+
+// if the leader crashes,
+// ring algo starts
+// if the ring is not done yet, the id that will sent to the client is not gonna be updated to the new value  of the new leader
+// it is still gonna be crashed leader's id
+// the UI is also gonna know 
 
