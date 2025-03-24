@@ -5,7 +5,7 @@ const http = require('http');
 const socket = require('socket.io');
 const server = http.createServer();
 const { v4: uuidV4 } = require('uuid');
-const port = 3000;
+const port = 3002;
 
 
 var io = socket(server, {
@@ -33,7 +33,7 @@ io.on("connection", (socket) => {
     const playerName = socket.handshake.query.playerName || "Unknown Player";
     console.log(`Player Connected: ${playerName}`);
 
-    socket.emit("welcome", { message: `Welcome, ${playerName}!` }); //add running
+    socket.emit("welcome", { message: `Welcome, ${playerName}!` });
     // console.log(socket);
     // console.log(messageQueue);
 
@@ -269,15 +269,14 @@ function handleSendPlayerCards(socket, data) {
 
 
 
-
 const servers = [
     { id: 4, address: "ws://localhost:3000", next: "ws://localhost:3001" },
     { id: 3, address: "ws://localhost:3001", next: "ws://localhost:3002" },
     { id: 2, address: "ws://localhost:3002", next: "ws://localhost:3003" },
-    { id: 1, address: "ws://localhost:3003", next: "ws://localhost:3000" },
+    { id: 1, address: "ws://localhost:3003", next: "ws://localhost:3000" }
 ];
 
-const myId = 4;
+const myId = 2;
 const myNext = servers.find(s => s.id === myId).next ;
 //const myAddress = servers.find(s => s.id === myId).address ;
 const socketClient = require("socket.io-client")(myNext);
@@ -285,9 +284,7 @@ let currentLeader = 4;
 let running = false;
 
 
-//ring has 2 messages
-// election
-// leader but you just  update the currentleader that is what you send on welcome
+
 
 //initiate election
 // set running to true
@@ -331,13 +328,13 @@ function announceLeader() {
 // Case message is leader(k):
 // leader message reception
 // leaderi = k
-// running = false
+// runningi = false
 // if k ≠ i then
 //      send leader(k) to Successor(i)
 // quit election
 socketClient.on("LEADER", (data) => {
     console.log(`Server ${myId} acknowledges Leader ${data.leader}`);
-    currentLeader = data.leader; 
+    currentLeader = data.leader;
     running = false;
     if(data.id !== myId) socketClient.emit("LEADER", { leader: myId });
 });
@@ -345,33 +342,33 @@ socketClient.on("LEADER", (data) => {
 //check if server is alive every 5 seconds by sending a heartbeat
 // if it is not the leader
 // assigned leader should be started first
-setInterval(() => {
-    if (myId !== currentLeader) {
-        //console.log(`Checking if leader ${currentLeader} is alive...`);
-        socketClient.emit("HEARTBEAT", { id: currentLeader });
-    }
-}, 5000);
+// setInterval(() => {
+//     if (myId !== currentLeader) {
+//         //console.log(`Checking if leader ${currentLeader} is alive...`);
+//         socketClient.emit("HEARTBEAT", { id: currentLeader });
+//     }
+// }, 5000);
 
 
-// verifying if all servers are alive
-socketClient.on("HEARTBEAT", (data) => {
-    if (data.id === myId) {
-        socketClient.emit("ALIVE");
-    }
-});
+// // verifying if all servers are alive
+// socketClient.on("HEARTBEAT", (data) => {
+//     if (data.id === myId) {
+//         socketClient.emit("ALIVE");
+//     }
+// });
 
-// checks if socket connection is still there
-socketClient.on("ALIVE", () => {
-    console.log("Leader is alive.");
-});
+// // checks if socket connection is still there
+// socketClient.on("ALIVE", () => {
+//     console.log("Leader is alive.");
+// });
 
-//any timeout would cause an election
-setTimeout(() => {
-    if (myId !== currentLeader) {
-        console.log(`Leader ${currentLeader} not responding. Starting election.`);
-        startElection();
-    }
-}, 10000);
+// //any timeout would cause an election
+// setTimeout(() => {
+//     if (myId !== currentLeader) {
+//         console.log(`Leader ${currentLeader} not responding. Starting election.`);
+//         startElection();
+//     }
+// }, 10000);
 
 io.listen(port);
 
