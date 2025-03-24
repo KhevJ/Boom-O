@@ -28,7 +28,7 @@ public class WebSocketManager : MonoBehaviour
     public List<string> deck;
 
     public List<string> playerCards;
-    private readonly string serverUrl = "http://localhost:3000"; //change that to a dictionianry
+    private readonly string serverUrl = "http://localhost:3000/client"; //change that to a dictionary
 
     void Awake()
     {
@@ -235,7 +235,7 @@ public class WebSocketManager : MonoBehaviour
 //Pseudocode for reconnection
 
 //? welcome for socket socket.On("Welcome")
-// ! if the serverId in welcome is -1  you just serverId to what the id the server sent
+// ! if the serverId in welcome is -1  you just set the serverId to what the id the server sent
 
 // ring algo did not announce the new leader to 3 yet
 // and we are connecting to 3 on client
