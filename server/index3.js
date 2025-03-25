@@ -14,7 +14,9 @@ var io = socket(server, {
     transports: ["websocket"]
 });
 
-io.use((socket, next) => {
+const clientNamespace = io.of("/client");
+
+clientNamespace.use((socket, next) => {
     if (socket.handshake.query.token === "UNITY") {
         next();
     } else {
@@ -28,12 +30,12 @@ const messageQueue = []; // queue to process messages in order
 let isProcessing = false;
 const rooms = new Map();// will store all rooms
 
-io.on("connection", (socket) => {
+clientNamespace.on("connection", (socket) => {
     console.log("A user connected");
     const playerName = socket.handshake.query.playerName || "Unknown Player";
     console.log(`Player Connected: ${playerName}`);
 
-    socket.emit("welcome", { message: `Welcome, ${playerName}!` });
+    socket.emit("welcome", { message: `Welcome, ${playerName}!` }); //add running
     // console.log(socket);
     // console.log(messageQueue);
 
@@ -109,7 +111,7 @@ async function processQueue() {
                 roomId,
                 players: [{ id: socket.id }],
                 reverse// for when we need to reverse the order of player 
-                // did you know yugioh is the best turn based game
+
             });
 
             console.log(`Room created: ${roomId}`);
@@ -140,7 +142,7 @@ async function processQueue() {
                 // console.log(socket.id)
                 // console.log(room.players)
                 // console.log("Room length " + room.players.length)
-                io.to(data).emit("roomLength", rooms.get(data).players.length)
+                clientNamespace.to(data).emit("roomLength", rooms.get(data).players.length)
             }
             else {
                 if (callback) {
@@ -181,14 +183,7 @@ function handleDrawCard(socket, data) {
     socket.broadcast.to(data.roomId).emit('drawnCard', drawnCard);
 
 
-    // if (gameObjects.deck) {
-    //     if (gameObjects.deck.length > 0 && gameObjects.deck[0] == data) {
-    //         const topCard = gameObjects.deck.shift();
-    //         //console.log("here")
-    //         socket.emit('drawnCard', "Server said You drew " + topCard);
-    //         //here add something to broadcast to all other players in the room/game
-    //     }
-    // }
+
 }
 
 function handleTopCard(socket, data) {
@@ -209,14 +204,14 @@ function handleTopCard(socket, data) {
             playerHands: room.playerHands
         };
     }
-    else{
+    else {
         roomUpdate = {
             ...room,
             topCard: data.topCard
         };
     }
 
-    
+
     rooms.set(data.roomId, roomUpdate);
 
     // console.log(rooms.get(data.roomId));
@@ -245,10 +240,10 @@ function handleSendDeck(socket, data) {
     console.log(rooms.get(data.roomId));
 
     for (const player of room.players) {
-        io.to(player.id).emit("playerCardsSaved", playerHands[player.id]); //each player gets their hand
+        clientNamespace.to(player.id).emit("playerCardsSaved", playerHands[player.id]); //each player gets their hand
     }
     // ! should be broacast to everyone except the host Done Brother
-    io.to(data.roomId).emit("deckSaved", deck) //send deck to everyone
+    clientNamespace.to(data.roomId).emit("deckSaved", deck) //send deck to everyone
 }
 
 function handleSendPlayerCards(socket, data) {
@@ -257,42 +252,95 @@ function handleSendPlayerCards(socket, data) {
     socket.emit('playerCardsSaved', "Server said why play UNO when Yugioh exists");
 }
 
-//helper function to send response with delay for testing
-// function sendResponse(socket, response) {
-//     return new Promise((resolve) => {
-//         setTimeout(() => {
-//             socket.emit("response", response);
-//             resolve();
-//         }, 500); // simulate delay
-//     });
-// }
 
 
+
+const ringNamespace = io.of("/ring");
 
 
 const servers = [
-    { id: 4, address: "ws://localhost:3000", next: "ws://localhost:3001" },
-    { id: 3, address: "ws://localhost:3001", next: "ws://localhost:3002" },
-    { id: 2, address: "ws://localhost:3002", next: "ws://localhost:3003" },
-    { id: 1, address: "ws://localhost:3003", next: "ws://localhost:3000" }
+    { id: 4, port: 3000, next: 3001, nextId: 3 },
+    { id: 3, port: 3001, next: 3002, nextId: 2 },
+    { id: 2, port: 3002, next: 3003, nextId: 1 },
+    { id: 1, port: 3003, next: 3000, nextId: 4 },
 ];
 
+//let's do some math here
+// 4-> 3 -> 2 -> 1 -> 4
+// for next id  -> (id - 1 + 4) % 4 || 4
+// for next port -> ((3001-3003) + 1)%3 + 3000 so next port = ((port - 3003) + 1)%3 +3000
+
 const myId = 1;
-const myNext = servers.find(s => s.id === myId).next ;
-//const myAddress = servers.find(s => s.id === myId).address ;
-const socketClient = require("socket.io-client")(myNext);
+const myNext = servers.find(s => s.id === myId).next; //next port
+
 let currentLeader = 4;
 let running = false;
+const ioClient = require("socket.io-client");
+let ringSocket = ioClient(`http://localhost:${myNext}/ring`, {
+    transports: ["websocket"]
+});
 
-//4->  3 -> 2 -> 1->4 -> 4 -> 3 ->2
-// if 4 is broken , 
-//      the first one who sees the crash triggers an election and maybe others as well
-//      only the predecessor/successor watches the leader, if there is no connection 
-// what if the leader gets back on
-// let's say it is connected to 2
-// if 4 gets back on, there won't be election
-// but 2 crashes, 4 become new leader
- 
+
+ringNamespace.on("connection", (socket) => {
+    console.log(`Server ${myId} received a connection from ${socket.handshake.address}`);
+
+    //election message reception
+    //if k > i then send election(k) to Successor(i)
+    // if k < i & not runningi then
+    //      send election(i) to Successor(i)
+    //      runningi = true
+    // if k = i then
+    //      leaderi = i
+    //      send leader(i) to Successor(i)
+    socket.on("ELECTION", (data) => {
+        console.log(`Server ${myId} received ELECTION message with biggest id: ${data.id}`);
+        if (data.id > myId) {
+            ringSocket.emit("ELECTION", data);
+        } else if (data.id < myId && !running) {
+            ringSocket.emit("ELECTION", { id: myId });
+            running = true;
+        } else if (data.id === myId) {
+            console.log(`Server ${myId} is the new leader!`);
+            currentLeader = myId;
+            //running = false;
+            announceLeader();
+        }
+    });
+
+
+    // Case message is leader(k):
+    // leader message reception
+    // leaderi = k
+    // running = false
+    // if k ≠ i then
+    //      send leader(k) to Successor(i)
+    // quit election
+    socket.on("LEADER", (data) => {
+        console.log(`Server ${myId} acknowledges Leader ${data.leader}`);
+        currentLeader = data.leader;
+        running = false;
+        if (data.leader === myId) return;
+        ringSocket.emit("LEADER", { leader: data.leader });
+    });
+
+
+    // verifying if all servers are alive
+    socket.on("HEARTBEAT", (data) => {
+        if (data.id === myId) {
+            ringSocket.emit("ALIVE");
+        }
+    });
+
+    // checks if socket connection is still there
+    socket.on("ALIVE", () => {
+        console.log("Leader is alive.");
+    });
+
+});
+
+//ring has 2 messages
+// election
+// leader but you just  update the currentleader that is what you send on welcome
 
 //initiate election
 // set running to true
@@ -301,86 +349,104 @@ function startElection() {
     if (running) return; // cannot let same server that started an election start another one again
     running = true;
     console.log(`Server ${myId} starting election.`);
-    socketClient.emit("ELECTION", { id: myId }); //send election message to successor
+    ringSocket.emit("ELECTION", { id: myId }); //send election message to successor
 }
 
-//election message reception
-//if k > i then send election(k) to Successor(i)
-// if k < i & not runningi then
-//      send election(i) to Successor(i)
-//      runningi = true
-// if k = i then
-//      leaderi = i
-//      send leader(i) to Successor(i)
-socketClient.on("ELECTION", (data) => {
-    console.log(`Server ${myId} received ELECTION message from ${data.id}`);
-    if (data.id > myId) {
-        socketClient.emit("ELECTION", data);
-    } else if (data.id < myId) {
-        socketClient.emit("ELECTION", { id: myId });
-        running = true;
-    } else if (data.id === myId) {
-        console.log(`Server ${myId} is the new leader!`);
-        currentLeader = myId;
-        electionInProgress = false;
-        announceLeader();
-    }
-});
+
+
 
 // sending leader to sucessor
 function announceLeader() {
-    console.log(`Server ${myId} announcing leadership.`);
-    socketClient.emit("LEADER", { leader: myId });
+    //console.log(`Server ${myId} announcing leadership.`);
+    ringSocket.emit("LEADER", { leader: myId });
 }
 
-// Case message is leader(k):
-// leader message reception
-// leaderi = k
-// runningi = false
-// if k ≠ i then
-//      send leader(k) to Successor(i)
-// quit election
-socketClient.on("LEADER", (data) => {
-    console.log(`Server ${myId} acknowledges Leader ${data.leader}`);
-    currentLeader = data.leader;
-    running = false;
-    if(data.id !== myId) socketClient.emit("LEADER", { leader: myId });
-});
+
+
+
 
 //check if server is alive every 5 seconds by sending a heartbeat
 // if it is not the leader
 // assigned leader should be started first
 // setInterval(() => {
-//     if (myId !== currentLeader) {
-//         //console.log(`Checking if leader ${currentLeader} is alive...`);
-//         socketClient.emit("HEARTBEAT", { id: currentLeader });
-//     }
-// }, 5000);
-
-
-// // verifying if all servers are alive
-// socketClient.on("HEARTBEAT", (data) => {
-//     if (data.id === myId) {
-//         socketClient.emit("ALIVE");
-//     }
-// });
-
-// // checks if socket connection is still there
-// socketClient.on("ALIVE", () => {
-//     console.log("Leader is alive.");
-// });
-
-// //any timeout would cause an election
-// setTimeout(() => {
-//     if (myId !== currentLeader) {
-//         console.log(`Leader ${currentLeader} not responding. Starting election.`);
-//         startElection();
-//     }
+//     // if (myId == currentLeader) {
+//     //     //console.log(`Checking if leader ${currentLeader} is alive...`);
+//     //     ringSocket.emit("HEARTBEAT", { id: currentLeader });
+//     // }
+//     ringSocket.emit("HEARTBEAT", { id: myId });
 // }, 10000);
+
+
+
+
+//any timeout would cause an election
+// setTimeout(() => {
+
+
+//     const server = servers.find(s => s.id === myId);
+
+//     if (server.nextId == currentLeader) {
+//         server.next = ((server.next - 3003) + 1) % 3 + 3000; //update port
+//         server.nextId = (server.nextId - 1) % 4 || 4; //update nextId
+
+//         //start new connection with the next server, ignoring crashed ones
+//         ringSocket = ioClient(`http://localhost:${server.next}/ring`, {
+//             transports: ["websocket"]
+//         });
+//         startElection();
+
+
+//     }
+//     else {
+//         server.next = ((server.next - 3003) + 1) % 3 + 3000; //update port
+//         server.nextId = (server.nextId - 1) % 4 || 4; //update nextId
+//         ringSocket = ioClient(`http://localhost:${server.next}/ring`, {
+//             transports: ["websocket"]
+//         });
+//     }
+
+// }, 10000);
+
+
+
+ringSocket.on("connect", () => {
+    // console.log(`Server ${myId} connected to next server on port ${myNext}`);
+});
+
+ringSocket.on("disconnect", () => {
+
+    const server = servers.find(s => s.id === myId);
+
+    if (server.nextId == currentLeader) {
+        server.next = ((server.next - 3000) + 1) % 4 + 3000; //update port  //((port - 3000) + 1) % 4 + 3000
+        server.nextId = (server.nextId - 1) % 4 || 4; //update nextId
+
+        //start new connection with the next server, ignoring crashed ones
+        ringSocket.disconnect(); 
+        ringSocket = ioClient(`http://localhost:${server.next}/ring`, {
+            transports: ["websocket"]
+        });
+        console.log(server.next);
+        console.log(server.nextId);
+        setTimeout(() => startElection(), 5000);
+        
+
+
+    }
+    // else {
+    //     server.next = ((server.next - 3000) + 1) % 4 + 3000; //update port
+    //     server.nextId = (server.nextId - 1) % 4 || 4; //update nextId
+    //     ringSocket = ioClient(`http://localhost:${server.next}/ring`, {
+    //         transports: ["websocket"]
+    //     });
+    // }
+
+});
+
+
 
 
 io.listen(port);
 
 console.log('UNO Server running on port ' + port);
-
 
