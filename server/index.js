@@ -438,6 +438,7 @@ ringSocket.on("connect", () => {
 ringSocket.on("disconnect", () => {
 
     const server = servers.find(s => s.id === myId);
+    
 
     if (server.nextId == currentLeader) {
         server.next = ((server.next - 3000) + 1) % 4 + 3000; //update port
