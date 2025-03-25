@@ -28,7 +28,16 @@ public class WebSocketManager : MonoBehaviour
     public List<string> deck;
 
     public List<string> playerCards;
-    private readonly string serverUrl = "http://localhost:3000/client"; //change that to a dictionary
+    private string serverUrl = "http://localhost:3000/client"; 
+    private Dictionary<int, string> serverDictionary = new Dictionary<int, string>()
+    {
+        { 4, "http://localhost:3000/client" },
+        { 3, "http://localhost:3001/client" },
+        { 2, "http://localhost:3002/client" },
+        { 1, "http://localhost:3003/client" }
+    };
+
+    private int currentServerId = 4;
 
     void Awake()
     {
@@ -44,22 +53,22 @@ public class WebSocketManager : MonoBehaviour
             return;
         }
 
-        InitializeSocketIO(); // would normally be triggered by first scene
+        // Initialize the socket using the current serverUrl.
+        InitializeSocketIO(serverUrl);
     }
 
-    void InitializeSocketIO() // arg = the serverId 
+    void InitializeSocketIO(string url)
     {
-        var uri = new Uri(serverUrl); // change that to reading from Hash Map
+        serverUrl = url;
+        var uri = new Uri(serverUrl);
         socket = new SocketIOUnity(uri, new SocketIOOptions
         {
             Query = new Dictionary<string, string>
                 {
                     {"token", "UNITY" },
-                    { "playerName", "Khevin The Goat" }
-                }
-            ,
-            EIO = 4
-            ,
+                    { "playerName", "Player" }
+                },
+            EIO = 4,
             Transport = SocketIOClient.Transport.TransportProtocol.WebSocket
         })
         {
@@ -84,6 +93,9 @@ public class WebSocketManager : MonoBehaviour
         socket.OnDisconnected += (sender, e) =>
         {
             Debug.Log("disconnect: " + e);
+            //socket = null;
+            SwapServer();
+
             //swap server
             //socket = null;
             // have global variable in WebsocketManager called serverId(4,3,2,1)
@@ -93,26 +105,36 @@ public class WebSocketManager : MonoBehaviour
             // swapServer();
 
         };
-        socket.OnReconnectAttempt += (sender, e) =>
-        {
-            Debug.Log($"{DateTime.Now} Reconnecting: attempt = {e}");
-        };
+        // socket.OnReconnectAttempt += (sender, e) =>
+        // {
+        //     Debug.Log($"{DateTime.Now} Reconnecting: attempt = {e}");
+        // };
 
 
 
         socket.On("welcome", (response) =>
-        {
-            Debug.Log(response.GetValue<string>());
-            //return currentServerId that will get from server
+        //return currentServerId that will get from server
             // global var serverId from client (3) == currentId from server(2)
             // do the swap again
             // what if we have a controller
             // there is like a socket in between client and server
             // when there is a disconnection , socket becomes null
             // we can't talk to anyone
-
-            
-
+           
+        {    
+             Debug.Log("Switched to new leader. Server id from welcome: " + currentServerId);
+            // if (currentServerId == -1)
+            // {
+            //     currentServerId = serverIdFromServer;
+            // }
+            // else
+            // {
+            //     // If the welcome event returns a different id, update the current server id.
+                
+            //     currentServerId = serverIdFromServer;
+            // }
+            // // Log the welcome message.
+            // Debug.Log(welcomeData.Value<string>("message"));
         });
 
         socket.On("drawnCard", (response) =>
@@ -162,6 +184,29 @@ public class WebSocketManager : MonoBehaviour
 
 
         socket.Connect();
+    }
+
+    private void SwapServer()
+    {
+        int nextServerId = GetNextServerId(currentServerId);
+        if (serverDictionary.TryGetValue(nextServerId, out string nextUrl))
+        {
+            Debug.Log("Switching server from id " + currentServerId + " to " + nextServerId + " at URL: " + nextUrl);
+            currentServerId = nextServerId;
+            InitializeSocketIO(nextUrl);
+        }
+        else
+        {
+            Debug.LogWarning("No server URL mapped for server id " + nextServerId);
+        }
+    }
+
+    private int GetNextServerId(int current)
+    {
+        int next = current - 1;
+        if (next < 1)
+            next = 4; // wrap-around to highest id
+        return next;
     }
 
     public void SendData(string action, object data)
@@ -245,6 +290,7 @@ public class WebSocketManager : MonoBehaviour
 // 4(serverId from client) == 4(currentLeader) a recursion till the id is different and not -1
 // ! if the id(4) is the same as the one(4)(serverId -> client variable) that crashes do it recursively till the id is different
 // if serverId is not -1 and diffent , then you call the swapServer  function again
+
 
 
 // if there is an error do that maybe

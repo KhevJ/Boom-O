@@ -155,13 +155,13 @@ async function processQueue() {
 
         }
         if (action === 'drawCard') {
-            handleDrawCard(socket, data);
+            //handleDrawCard(socket, data);
         } else if (action === 'sendDeck') {
             handleSendDeck(socket, data);
         } else if (action === 'sendPlayerCards') {
             handleSendPlayerCards(socket, data);
         } else if (action === 'sendTopCard') {
-            handleTopCard(socket, data);
+            //handleTopCard(socket, data);
         }
     }
 
