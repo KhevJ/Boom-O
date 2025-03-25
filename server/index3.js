@@ -268,7 +268,7 @@ const servers = [
 //let's do some math here
 // 4-> 3 -> 2 -> 1 -> 4
 // for next id  -> (id - 1 + 4) % 4 || 4
-// for next port -> ((3001-3003) + 1)%3 + 3000 so next port = ((port - 3003) + 1)%3 +3000
+// for next port -> ((3001-3000) + 1)%4 + 3000 so next port = ((port - 3000) + 1) % 4 + 3000
 
 const myId = 1;
 const myNext = servers.find(s => s.id === myId).next; //next port
@@ -408,28 +408,43 @@ function announceLeader() {
 // }, 10000);
 
 
+function preserveEventListeners(oldSocket, newSocket) {
+    //get all event listeners from the old socket
+    const listeners = oldSocket._callbacks || {};
+
+    //reattach each listener to the new socket
+    Object.keys(listeners).forEach(event => {
+        listeners[event].forEach(callback => {
+            newSocket.on(event.replace("$", ""), callback); //fix Socket.IO's internal event naming
+        });
+    });
+}
+
 
 ringSocket.on("connect", () => {
     // console.log(`Server ${myId} connected to next server on port ${myNext}`);
 });
 
 ringSocket.on("disconnect", () => {
-
+    
     const server = servers.find(s => s.id === myId);
 
     if (server.nextId == currentLeader) {
         server.next = ((server.next - 3000) + 1) % 4 + 3000; //update port  //((port - 3000) + 1) % 4 + 3000
         server.nextId = (server.nextId - 1) % 4 || 4; //update nextId
 
+        const oldSocket = ringSocket;
         //start new connection with the next server, ignoring crashed ones
-        ringSocket.disconnect(); 
+        ringSocket.disconnect();
         ringSocket = ioClient(`http://localhost:${server.next}/ring`, {
             transports: ["websocket"]
         });
+        //attachRingSocketListeners();
+        preserveEventListeners(oldSocket, ringSocket);
         console.log(server.next);
         console.log(server.nextId);
         setTimeout(() => startElection(), 5000);
-        
+
 
 
     }
@@ -444,6 +459,32 @@ ringSocket.on("disconnect", () => {
 });
 
 
+
+function attachRingSocketListeners() {
+    ringSocket.on("connect", () => {
+        console.log(`Server ${myId} connected to new successor.`);
+    });
+
+    ringSocket.on("disconnect", () => {
+        const server = servers.find(s => s.id === myId);
+
+        if (server.nextId == currentLeader) {
+            server.next = ((server.next - 3000) + 1) % 4 + 3000; //update port  //((port - 3000) + 1) % 4 + 3000
+            server.nextId = (server.nextId - 1) % 4 || 4; //update nextId
+
+            //start new connection with the next server, ignoring crashed ones
+            ringSocket.disconnect();
+            ringSocket = ioClient(`http://localhost:${server.next}/ring`, {
+                transports: ["websocket"]
+            });
+            console.log(server.next);
+            console.log(server.nextId);
+            setTimeout(() => startElection(), 5000);
+
+        }
+    });
+
+}
 
 
 io.listen(port);
