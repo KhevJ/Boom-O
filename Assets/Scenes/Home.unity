@@ -210,7 +210,7 @@ GameObject:
   - component: {fileID: 338159067}
   - component: {fileID: 338159066}
   m_Layer: 5
-  m_Name: Play button
+  m_Name: Create button
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -232,8 +232,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: -104.758}
-  m_SizeDelta: {x: 544.662, y: 191.367}
+  m_AnchoredPosition: {x: 0, y: -107}
+  m_SizeDelta: {x: 970.046, y: 164.49}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &338159066
 MonoBehaviour:
@@ -311,7 +311,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: 9f3d7b77b0c853c448bbe8f79a867b06, type: 3}
+  m_Sprite: {fileID: 21300000, guid: 40c2566a22714934491ebc124eaea21e, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -521,7 +521,7 @@ GameObject:
   - component: {fileID: 1041456204}
   - component: {fileID: 1041456203}
   m_Layer: 5
-  m_Name: Quit Button
+  m_Name: Join Button
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -543,8 +543,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: -323}
-  m_SizeDelta: {x: 544.662, y: 191.367}
+  m_AnchoredPosition: {x: 0, y: -310}
+  m_SizeDelta: {x: 771.853, y: 164.494}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1041456203
 MonoBehaviour:
@@ -622,7 +622,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: 58664e8467225d54684053a4ab86f6e1, type: 3}
+  m_Sprite: {fileID: 21300000, guid: 6c037755d7989424dae8baecfdeb0d3c, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -1128,6 +1128,14 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   connected: 0
+  roomLength: 0
+  host: 0
+  roomId: 
+  topCard: 
+  updateTopCard: 0
+  updateDeck: 0
+  deck: []
+  playerCards: []
 --- !u!4 &2056808467
 Transform:
   m_ObjectHideFlags: 0
