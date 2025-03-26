@@ -31,7 +31,7 @@ public class WebSocketManager : MonoBehaviour
     private string serverUrl = "http://localhost:3000/client";
     private Dictionary<int, string> serverDictionary = new Dictionary<int, string>()
     {
-        { 4, "http://96.51.133.135/client" }, //Khevin's IP
+        { 4, "http://96.51.133.135/client" }, //Khevin's Server
         { 3, "http://localhost:3001/client" },
         { 2, "http://localhost:3002/client" },
         { 1, "http://localhost:3003/client" }
