@@ -265,6 +265,14 @@ const servers = [
     { id: 1, port: 3003, next: 3000, nextId: 4 },
 ];
 
+
+const links = new Map();
+
+links.set(3000, `http://96.51.133.135:3000/ring`);
+links.set(3001, `http://localhost:3001/ring`);
+links.set(3002, `http://localhost:3002/ring`);
+links.set(3003, `http://localhost:3003/ring`);
+
 //let's do some math here
 // 4-> 3 -> 2 -> 1 -> 4
 // for next id  -> (id - 1 + 4) % 4 || 4
@@ -276,7 +284,7 @@ const myNext = servers.find(s => s.id === myId).next; //next port
 let currentLeader = 4;
 let running = false;
 const ioClient = require("socket.io-client");
-let ringSocket = ioClient(`http://localhost:${myNext}/ring`, {
+let ringSocket = ioClient( links.get(myNext), {
     transports: ["websocket"]
 });
 
@@ -436,7 +444,7 @@ ringSocket.on("disconnect", () => {
         const oldSocket = ringSocket;
         //start new connection with the next server, ignoring crashed ones
         ringSocket.disconnect();
-        ringSocket = ioClient(`http://localhost:${server.next}/ring`, {
+        ringSocket = ioClient(links.get(server.next), {
             transports: ["websocket"]
         });
         //attachRingSocketListeners();
@@ -460,31 +468,31 @@ ringSocket.on("disconnect", () => {
 
 
 
-function attachRingSocketListeners() {
-    ringSocket.on("connect", () => {
-        console.log(`Server ${myId} connected to new successor.`);
-    });
+// function attachRingSocketListeners() {
+//     ringSocket.on("connect", () => {
+//         console.log(`Server ${myId} connected to new successor.`);
+//     });
 
-    ringSocket.on("disconnect", () => {
-        const server = servers.find(s => s.id === myId);
+//     ringSocket.on("disconnect", () => {
+//         const server = servers.find(s => s.id === myId);
 
-        if (server.nextId == currentLeader) {
-            server.next = ((server.next - 3000) + 1) % 4 + 3000; //update port  //((port - 3000) + 1) % 4 + 3000
-            server.nextId = (server.nextId - 1) % 4 || 4; //update nextId
+//         if (server.nextId == currentLeader) {
+//             server.next = ((server.next - 3000) + 1) % 4 + 3000; //update port  //((port - 3000) + 1) % 4 + 3000
+//             server.nextId = (server.nextId - 1) % 4 || 4; //update nextId
 
-            //start new connection with the next server, ignoring crashed ones
-            ringSocket.disconnect();
-            ringSocket = ioClient(`http://localhost:${server.next}/ring`, {
-                transports: ["websocket"]
-            });
-            console.log(server.next);
-            console.log(server.nextId);
-            setTimeout(() => startElection(), 5000);
+//             //start new connection with the next server, ignoring crashed ones
+//             ringSocket.disconnect();
+//             ringSocket = ioClient(links.get(server.next), {
+//                 transports: ["websocket"]
+//             });
+//             console.log(server.next);
+//             console.log(server.nextId);
+//             setTimeout(() => startElection(), 5000);
 
-        }
-    });
+//         }
+//     });
 
-}
+// }
 
 
 io.listen(port);

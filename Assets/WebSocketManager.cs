@@ -28,16 +28,18 @@ public class WebSocketManager : MonoBehaviour
     public List<string> deck;
 
     public List<string> playerCards;
-    private string serverUrl = "http://localhost:3000/client"; 
+    private string serverUrl = "http://localhost:3000/client";
     private Dictionary<int, string> serverDictionary = new Dictionary<int, string>()
     {
-        { 4, "http://localhost:3000/client" },
+        { 4, "http://96.51.133.135/client" }, //Khevin's IP
         { 3, "http://localhost:3001/client" },
         { 2, "http://localhost:3002/client" },
         { 1, "http://localhost:3003/client" }
     };
 
     private int currentServerId = 4;
+
+    
 
     void Awake()
     {
@@ -114,15 +116,15 @@ public class WebSocketManager : MonoBehaviour
 
         socket.On("welcome", (response) =>
         //return currentServerId that will get from server
-            // global var serverId from client (3) == currentId from server(2)
-            // do the swap again
-            // what if we have a controller
-            // there is like a socket in between client and server
-            // when there is a disconnection , socket becomes null
-            // we can't talk to anyone
-           
-        {    
-             Debug.Log("Switched to new leader. Server id from welcome: " + currentServerId);
+        // global var serverId from client (3) == currentId from server(2)
+        // do the swap again
+        // what if we have a controller
+        // there is like a socket in between client and server
+        // when there is a disconnection , socket becomes null
+        // we can't talk to anyone
+
+        {
+            Debug.Log("Switched to new leader. Server id from welcome: " + currentServerId);
             // if (currentServerId == -1)
             // {
             //     currentServerId = serverIdFromServer;
@@ -130,7 +132,7 @@ public class WebSocketManager : MonoBehaviour
             // else
             // {
             //     // If the welcome event returns a different id, update the current server id.
-                
+
             //     currentServerId = serverIdFromServer;
             // }
             // // Log the welcome message.
