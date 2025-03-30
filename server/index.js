@@ -83,6 +83,11 @@ clientNamespace.on("connection", (socket) => {
         processQueue();
     });
 
+    socket.on("wildcard", (data) => {
+        messageQueue.push({ socket, action: "wildcard", data });
+        processQueue();
+    })
+
 
 
 
@@ -107,10 +112,12 @@ async function processQueue() {
             const roomId = "Khevin's Room"
             await socket.join(roomId);
             let reverse = false;
+            let chosenColor = -1
             rooms.set(roomId, {
                 roomId,
                 players: [{ id: socket.id }],
-                reverse// for when we need to reverse the order of player 
+                reverse,// for when we need to reverse the order of player \
+                chosenColor
                 // did you know yugioh is the best turn based game
             });
 
@@ -160,10 +167,25 @@ async function processQueue() {
             handleSendPlayerCards(socket, data);
         } else if (action === 'sendTopCard') {
             handleTopCard(socket, data);
+        } else if (action === "wildcard"){
+            handleWildCard(socket, data);
         }
+
     }
 
     isProcessing = false; // unlock queue processing
+}
+
+function handleWildCard(socket,data){
+    const room = rooms.get(data.roomId);
+    // console.log(room);
+    const roomUpdate = {
+        ...room,
+        chosenColor: data.chosenColor
+    };
+    rooms.set(data.roomId, roomUpdate);
+    console.log(data.chosenColor);
+    socket.broadcast.to(data.roomId).emit("wildcardColor", data.chosenColor);
 }
 
 //example handlers for events 
@@ -284,12 +306,10 @@ const servers = [
 
 const links = new Map();
 
-links.set(3000, `http://96.51.133.135:3000/ring`);
+links.set(3000, `http://localhost:3000/ring`); //change that here
 links.set(3001, `http://localhost:3001/ring`);
 links.set(3002, `http://localhost:3002/ring`);
 links.set(3003, `http://localhost:3003/ring`);
-
-
 
 //let's do some math here
 // 4-> 3 -> 2 -> 1 -> 4
@@ -492,6 +512,7 @@ ringSocket.on("disconnect", () => {
 
 
 io.listen(port);
+
 
 console.log('UNO Server running on port ' + port);
 

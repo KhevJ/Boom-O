@@ -25,18 +25,23 @@ public class WebSocketManager : MonoBehaviour
     public bool updateTopCard = false;
 
     public bool updateDeck = false; // when card is drawn
+
+    public int wildcardColor = -1; //double check whether -1 is a color in card.cs
+
+    public bool wildcardPlaced = false; // when wilcard everyone needs to know the color
     public List<string> deck;
 
     public List<string> playerCards;
     private string serverUrl = "http://localhost:3000/client";
-    private Dictionary<int, string> serverDictionary = new Dictionary<int, string>()
+    private Dictionary<int, string> serverDictionary = new()
     {
-        { 4, "http://96.51.133.135/client" }, //Khevin's Server
+        { 4, "http://localhost:3000/client" }, //Khevin's Server
         { 3, "http://localhost:3001/client" },
         { 2, "http://localhost:3002/client" },
         { 1, "http://localhost:3003/client" }
     };
 
+   
     private int currentServerId = 4;
 
     
@@ -182,6 +187,13 @@ public class WebSocketManager : MonoBehaviour
 
 
             // Debug.Log("Server responded: Player cards saved successfully!");
+        });
+
+
+        socket.On("wildcardColor", (response) => {
+            wildcardColor = response.GetValue<int>();
+            wildcardPlaced = true;
+            Debug.Log(wildcardColor);
         });
 
 

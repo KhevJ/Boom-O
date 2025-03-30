@@ -472,6 +472,17 @@ public class GameManager : MonoBehaviour
         // Set the chosen color for the wild card
         topCard.color = chosenColor;
 
+        var data = new Dictionary<string, object>
+                    {
+                        { "roomId", WebSocketManager.Instance.roomId },
+                        { "chosenColor", (int) chosenColor }
+                    };
+
+        //can do something here for wildcards
+        WebSocketManager.Instance.SendData("wildcard", data);
+
+
+
         // This is the key fix: Change the type to allow normal cards
         topCard.type = Card.CardType.Number;
 
@@ -586,6 +597,17 @@ public class GameManager : MonoBehaviour
                     Debug.LogError($"Sprite not found: {spriteName}");
                 }
             }
+
+
+
+        }
+
+        if (WebSocketManager.Instance.wildcardPlaced && topCard != null)
+        {
+            // Debug.Log((Card.CardColor)WebSocketManager.Instance.wildcardColor);
+            topCard.color = (Card.CardColor)WebSocketManager.Instance.wildcardColor; //nice explicit casting works, well hopefully
+            WebSocketManager.Instance.wildcardPlaced = false;
+
 
         }
 

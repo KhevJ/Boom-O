@@ -268,7 +268,7 @@ const servers = [
 
 const links = new Map();
 
-links.set(3000, `http://96.51.133.135:3000/ring`);
+links.set(3000, `http://localhost:3000/ring`); //change that here
 links.set(3001, `http://localhost:3001/ring`);
 links.set(3002, `http://localhost:3002/ring`);
 links.set(3003, `http://localhost:3003/ring`);
