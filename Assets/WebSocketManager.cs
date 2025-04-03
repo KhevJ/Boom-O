@@ -43,7 +43,7 @@ public class WebSocketManager : MonoBehaviour
         { 4, "http://localhost:3000/client" }, //Khevin's Server
         { 3, "http://localhost:3001/client" },
         { 2, "http://localhost:3002/client" },
-        { 1, "http://localhost:3003/client" }
+        { 1, "http://localhost:3003/client" },
         { 0, "http://localhost:3004/client" }
     };
 
