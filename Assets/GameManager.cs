@@ -278,6 +278,7 @@ public class GameManager : MonoBehaviour
             {
                 { "roomId", WebSocketManager.Instance.roomId },
                 { "topCard",  GetSpriteName(topCard.color, topCard.type, topCard.number) },
+                {"playerName", WebSocketManager.Instance.playerName},
                 { "firstTime", "firstTime"}
             };
             WebSocketManager.Instance.SendData("sendTopCard", data); //send top card to server
@@ -403,7 +404,8 @@ public class GameManager : MonoBehaviour
                     var data = new Dictionary<string, object>
                     {
                         { "roomId", WebSocketManager.Instance.roomId },
-                        { "drawnCard",  spriteName }
+                        { "drawnCard",  spriteName },
+                        {"playerName" , WebSocketManager.Instance.playerName}
                     };
                     WebSocketManager.Instance.SendData("drawCard", data); //sending  drawn card to server
                     SpriteRenderer spriteRenderer = drawnCard.GetComponent<SpriteRenderer>();

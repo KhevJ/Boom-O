@@ -198,7 +198,7 @@ function handleDrawCard(socket, data) {
     console.log(room);
     const drawnCard = room.deck.shift();
     console.log(drawnCard);
-    room.playerHands[socket.id].push(drawnCard);
+    room.playerHands[data.playerName].push(drawnCard);
     const roomUpdate = {
         ...room,
         playerHands: room.playerHands,
@@ -218,7 +218,7 @@ function handleTopCard(socket, data) {
     //!need to update players hand except when top card is placed for the first time
     let roomUpdate;
     if (!data.firstTime) {
-        const hand = room.playerHands[socket.id];
+        const hand = room.playerHands[data.playerName];
         const index = hand.indexOf(data.topCard);
 
         if (index !== -1) {
@@ -253,7 +253,7 @@ function handleSendDeck(socket, data) {
     const playerHands = {};
 
     for (const player of room.players) { //player here is the socket
-        playerHands[player.id] = deck.splice(0, 7); //each player gets 7 cards //? change player.id to player actual name
+        playerHands[player.playerName] = deck.splice(0, 7); //each player gets 7 cards //? change player.id to player actual name
     }
 
     const roomUpdate = {
@@ -267,7 +267,7 @@ function handleSendDeck(socket, data) {
 
     for (const player of room.players) {
         // here has to be sockets id
-        clientNamespace.to(player.id).emit("playerCardsSaved", playerHands[player.id]); //find player which has playerId =="Name"  player.socketID
+        clientNamespace.to(player.socketId).emit("playerCardsSaved", playerHands[player.playerName]); //find player which has playerId =="Name"  player.socketID
         
     }
     // ! should be broacast to everyone except the host Done Brother

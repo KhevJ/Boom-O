@@ -55,7 +55,8 @@ public class DragDrop : MonoBehaviour
                     var data = new Dictionary<string, object>
                     {
                         { "roomId", WebSocketManager.Instance.roomId },
-                        { "topCard", gameManager.GetSpriteName(currentCard.color, currentCard.type, currentCard.number)}
+                        { "topCard", gameManager.GetSpriteName(currentCard.color, currentCard.type, currentCard.number)},
+                        {"playerName" , WebSocketManager.Instance.playerName}
                     };
                     WebSocketManager.Instance.SendData("sendTopCard", data); //send top card to server meaning to everyone except sender
                     
