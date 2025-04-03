@@ -8,6 +8,7 @@ const { v4: uuidV4 } = require('uuid');
 const port = 3000;
 
 
+
 var io = socket(server, {
     pingInterval: 15000,
     pingTimeout: 5000,
@@ -25,9 +26,9 @@ clientNamespace.use((socket, next) => {
 });
 
 
-// const gameObjects = {}; // store game state
+
 const messageQueue = []; // queue to process messages in order
-let isProcessing = false;
+let isProcessing = false; //this is the lock
 const rooms = new Map();// will store all rooms
 
 clientNamespace.on("connection", (socket) => {
@@ -115,7 +116,7 @@ async function processQueue() {
             let chosenColor = -1
             rooms.set(roomId, {
                 roomId,
-                players: [{ id: socket.id }],
+                players: [{ id: socket.id }], //[player1, player2,  player3]
                 reverse,// for when we need to reverse the order of player \
                 chosenColor
                 // did you know yugioh is the best turn based game
@@ -123,7 +124,7 @@ async function processQueue() {
 
             console.log(`Room created: ${roomId}`);
             if (callback) {
-                callback(roomId);
+                callback(roomId); // that name of the player and the roomID is gonna be stored on Unity
             }
         }
 
@@ -202,18 +203,12 @@ function handleDrawCard(socket, data) {
         deck: room.deck
     };
     rooms.set(data.roomId, roomUpdate);
-    socket.broadcast.to(data.roomId).emit('drawnCard', drawnCard);
+    socket.broadcast.to(data.roomId).emit('drawnCard', drawnCard); //send to everyone except the client triggering
 
 
-    // if (gameObjects.deck) {
-    //     if (gameObjects.deck.length > 0 && gameObjects.deck[0] == data) {
-    //         const topCard = gameObjects.deck.shift();
-    //         //console.log("here")
-    //         socket.emit('drawnCard', "Server said You drew " + topCard);
-    //         //here add something to broadcast to all other players in the room/game
-    //     }
-    // }
+
 }
+
 
 function handleTopCard(socket, data) {
     console.log(" top card:", data);
@@ -252,24 +247,26 @@ function handleSendDeck(socket, data) {
     console.log("Received deck:", data);
     const room = rooms.get(data.roomId);
     let deck = [...data.deck];
-    // gameObjects["deck"] = deck; //! delete this later this is just for testing drawing when drawing is not fully implemented
+
     const playerHands = {};
 
     for (const player of room.players) { //player here is the socket
-        playerHands[player.id] = deck.splice(0, 7); //each player gets 7 cards
+        playerHands[player.id] = deck.splice(0, 7); //each player gets 7 cards //? change player.id to player actual name
     }
 
     const roomUpdate = {
         ...room,
         deck: deck,
-        playerHands: playerHands
+        playerHands: playerHands //  hands of all player
     };
     rooms.set(data.roomId, roomUpdate);
 
     console.log(rooms.get(data.roomId));
 
     for (const player of room.players) {
-        clientNamespace.to(player.id).emit("playerCardsSaved", playerHands[player.id]); //each player gets their hand
+        // here has to be sockets id
+        clientNamespace.to(player.id).emit("playerCardsSaved", playerHands[player.id]); //find player which has playerId =="Name"  player.socketID
+        
     }
     // ! should be broacast to everyone except the host Done Brother
     clientNamespace.to(data.roomId).emit("deckSaved", deck) //send deck to everyone
@@ -277,22 +274,11 @@ function handleSendDeck(socket, data) {
 
 function handleSendPlayerCards(socket, data) {
     console.log("Received deck:", data);
-    // gameObjects["playerHand"] = data;
-    socket.emit('playerCardsSaved', "Server said why play UNO when Yugioh exists");
+   
 }
 
-//helper function to send response with delay for testing
-// function sendResponse(socket, response) {
-//     return new Promise((resolve) => {
-//         setTimeout(() => {
-//             socket.emit("response", response);
-//             resolve();
-//         }, 500); // simulate delay
-//     });
-// }
 
-
-
+// here ring algo starts
 
 const ringNamespace = io.of("/ring");
 
@@ -318,7 +304,7 @@ links.set(3003, `http://localhost:3003/ring`);
 
 const myId = 4;
 const myNext = servers.find(s => s.id === myId).next; //next port
-//const myAddress = servers.find(s => s.id === myId).address ;
+
 
 let currentLeader = 4;
 let running = false;
@@ -509,6 +495,28 @@ ringSocket.on("disconnect", () => {
     // }
 
 });
+
+//? Game state between servers
+//create a new namespace
+//send the rooms and the proceeding queue everytime there is an update
+
+
+//? Turn based logic 
+// Critical sections: deck and the top card
+// can trigger a race condition
+// the first in player will get a boolean /token to play 
+// only he can play
+// draw and placing top cards, you send a response to server
+// server gives the token to next player
+// goes on like this
+
+// 3 threads on same port
+
+const serverNamespace = io.of("/ring");
+
+
+
+
 
 
 io.listen(port);

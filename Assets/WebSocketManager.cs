@@ -255,6 +255,8 @@ public class WebSocketManager : MonoBehaviour
         });
     }
 
+    
+
     public async void JoinRoom(string room = "Khevin's Room")
     {
 
