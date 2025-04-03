@@ -5,7 +5,7 @@ const http = require('http');
 const socket = require('socket.io');
 const server = http.createServer();
 const { v4: uuidV4 } = require('uuid');
-const port = 3001;
+const port = 3004;
 
 
 
@@ -19,7 +19,6 @@ const clientNamespace = io.of("/client");
 
 clientNamespace.use((socket, next) => {
     if (socket.handshake.query.token === "UNITY") {
-    
         next();
     } else {
         next(new Error("Authentication error"));
@@ -27,17 +26,17 @@ clientNamespace.use((socket, next) => {
 });
 
 
-// const gameObjects = {}; // store game state
+
 const messageQueue = []; // queue to process messages in order
-let isProcessing = false;
+let isProcessing = false; //this is the lock
 const rooms = new Map();// will store all rooms
 
 clientNamespace.on("connection", (socket) => {
     console.log("A user connected");
-    const playerName = socket.handshake.query.playerName || "Unknown Player";
-    console.log(`Player Connected: ${playerName}`);
+    // const playerName = socket.handshake.query.playerName || "Unknown Player";
+    // console.log(`Player Connected: ${playerName}`);
 
-    socket.emit("welcome", { message: `Welcome, ${playerName}!` }); //add running
+    socket.emit("welcome", { message: `Welcome!` }); //add running
     // console.log(socket);
     // console.log(messageQueue);
 
@@ -85,6 +84,16 @@ clientNamespace.on("connection", (socket) => {
         processQueue();
     });
 
+    socket.on("wildcard", (data) => {
+        messageQueue.push({ socket, action: "wildcard", data });
+        processQueue();
+    })
+
+    socket.on("updateTurnAccess", (data) => {
+        messageQueue.push({ socket, action: "updateTurnAccess", data });
+        processQueue();
+    })
+
 
 
 
@@ -107,26 +116,30 @@ async function processQueue() {
         if (action === 'createRoom') {
             //const roomId = uuidV4();
             const roomId = "Khevin's Room"
+            const playerName = uuidV4();
             await socket.join(roomId);
             let reverse = false;
+            let chosenColor = -1
             rooms.set(roomId, {
                 roomId,
-                players: [{ id: socket.id }],
-                reverse// for when we need to reverse the order of player 
+                players: [{ playerName, socketId: socket.id }], //[player1, player2,  player3]
+                reverse,// for when we need to reverse the order of player \
+                chosenColor
                 // did you know yugioh is the best turn based game
             });
 
             console.log(`Room created: ${roomId}`);
             if (callback) {
-                callback(roomId);
+                callback(roomId, playerName); // that name of the player and the roomID is gonna be stored on Unity
             }
         }
 
         if (action === 'joinRoom') {
             // check if room exists and has a player waiting
-            console.log(data);
-            const room = rooms.get(data);
+            console.log(data); //data has the roomId
+            const room = rooms.get(data); 
             console.log(room);
+            const playerName = uuidV4();
             // add the joining user's data to the list of players in the room
             if (room && room.players.length < 2) {
                 await socket.join(data); // make the joining client join the room
@@ -134,12 +147,12 @@ async function processQueue() {
                     ...room,
                     players: [
                         ...room.players,
-                        { id: socket.id },
+                        { playerName, socketId: socket.id },
                     ],
                 };
                 rooms.set(data, roomUpdate);
                 if (callback) {
-                    callback(data);
+                    callback(data, playerName);
                 }
                 // console.log(socket.id)
                 // console.log(room.players)
@@ -155,17 +168,35 @@ async function processQueue() {
 
         }
         if (action === 'drawCard') {
-            //handleDrawCard(socket, data);
+            handleDrawCard(socket, data);
         } else if (action === 'sendDeck') {
             handleSendDeck(socket, data);
         } else if (action === 'sendPlayerCards') {
             handleSendPlayerCards(socket, data);
         } else if (action === 'sendTopCard') {
-            //handleTopCard(socket, data);
+            handleTopCard(socket, data);
+        } else if (action === "wildcard"){
+            handleWildCard(socket, data);
+        } else if (action === "updateTurnAccess"){
+            handleTurnAccess(socket, data);
         }
+
+
     }
 
     isProcessing = false; // unlock queue processing
+}
+
+function handleWildCard(socket,data){
+    const room = rooms.get(data.roomId);
+    // console.log(room);
+    const roomUpdate = {
+        ...room,
+        chosenColor: data.chosenColor
+    };
+    rooms.set(data.roomId, roomUpdate);
+    console.log(data.chosenColor);
+    socket.broadcast.to(data.roomId).emit("wildcardColor", data.chosenColor);
 }
 
 //example handlers for events 
@@ -175,25 +206,19 @@ function handleDrawCard(socket, data) {
     console.log(room);
     const drawnCard = room.deck.shift();
     console.log(drawnCard);
-    room.playerHands[socket.id].push(drawnCard);
+    room.playerHands[data.playerName].push(drawnCard);
     const roomUpdate = {
         ...room,
         playerHands: room.playerHands,
         deck: room.deck
     };
     rooms.set(data.roomId, roomUpdate);
-    socket.broadcast.to(data.roomId).emit('drawnCard', drawnCard);
+    socket.broadcast.to(data.roomId).emit('drawnCard', drawnCard); //send to everyone except the client triggering
 
 
-    // if (gameObjects.deck) {
-    //     if (gameObjects.deck.length > 0 && gameObjects.deck[0] == data) {
-    //         const topCard = gameObjects.deck.shift();
-    //         //console.log("here")
-    //         socket.emit('drawnCard', "Server said You drew " + topCard);
-    //         //here add something to broadcast to all other players in the room/game
-    //     }
-    // }
+
 }
+
 
 function handleTopCard(socket, data) {
     console.log(" top card:", data);
@@ -201,7 +226,7 @@ function handleTopCard(socket, data) {
     //!need to update players hand except when top card is placed for the first time
     let roomUpdate;
     if (!data.firstTime) {
-        const hand = room.playerHands[socket.id];
+        const hand = room.playerHands[data.playerName];
         const index = hand.indexOf(data.topCard);
 
         if (index !== -1) {
@@ -232,24 +257,26 @@ function handleSendDeck(socket, data) {
     console.log("Received deck:", data);
     const room = rooms.get(data.roomId);
     let deck = [...data.deck];
-    // gameObjects["deck"] = deck; //! delete this later this is just for testing drawing when drawing is not fully implemented
+
     const playerHands = {};
 
     for (const player of room.players) { //player here is the socket
-        playerHands[player.id] = deck.splice(0, 7); //each player gets 7 cards
+        playerHands[player.playerName] = deck.splice(0, 7); //each player gets 7 cards //? change player.id to player actual name
     }
 
     const roomUpdate = {
         ...room,
         deck: deck,
-        playerHands: playerHands
+        playerHands: playerHands //  hands of all player
     };
     rooms.set(data.roomId, roomUpdate);
 
     console.log(rooms.get(data.roomId));
 
     for (const player of room.players) {
-        clientNamespace.to(player.id).emit("playerCardsSaved", playerHands[player.id]); //each player gets their hand
+        // here has to be sockets id
+        clientNamespace.to(player.socketId).emit("playerCardsSaved", playerHands[player.playerName]); //find player which has playerId =="Name"  player.socketID
+        
     }
     // ! should be broacast to everyone except the host Done Brother
     clientNamespace.to(data.roomId).emit("deckSaved", deck) //send deck to everyone
@@ -257,22 +284,23 @@ function handleSendDeck(socket, data) {
 
 function handleSendPlayerCards(socket, data) {
     console.log("Received deck:", data);
-    // gameObjects["playerHand"] = data;
-    socket.emit('playerCardsSaved', "Server said why play UNO when Yugioh exists");
+   
 }
 
-//helper function to send response with delay for testing
-// function sendResponse(socket, response) {
-//     return new Promise((resolve) => {
-//         setTimeout(() => {
-//             socket.emit("response", response);
-//             resolve();
-//         }, 500); // simulate delay
-//     });
-// }
+function handleSendDeck(socket, data) {
+    console.log(data);
+    const room = rooms.get(data.roomId);
+    curr_player=room.players.findIndex((player)=>player.playerName==data.playerName);
+    console.log(curr_player);
+    const len = room.players.length;
+    if (curr_player == len){
+        
+    }
+
+}
 
 
-
+// here ring algo starts
 
 const ringNamespace = io.of("/ring");
 
@@ -285,7 +313,6 @@ const servers = [
     { id: 0, port: 3004, next: 3000, nextId: 4 },
 ];
 
-
 const links = new Map();
 
 links.set(3000, `http://localhost:3000/ring`); //change that here
@@ -293,14 +320,15 @@ links.set(3001, `http://localhost:3001/ring`);
 links.set(3002, `http://localhost:3002/ring`);
 links.set(3003, `http://localhost:3003/ring`);
 links.set(3004, `http://localhost:3004/ring`);
+
 //let's do some math here
 // 4-> 3 -> 2 -> 1 -> 4
 // for next id  -> (id - 1 + 4) % 4 || 4
 // for next port -> ((3001-3003) + 1)%3 + 3000 so next port = ((port - 3003) + 1)%3 +3000
 
-const myId = 3;
+const myId = 0;
 const myNext = servers.find(s => s.id === myId).next; //next port
-//const myAddress = servers.find(s => s.id === myId).address ;
+
 
 let currentLeader = 4;
 let running = false;
@@ -441,6 +469,7 @@ function announceLeader() {
 // }, 10000);
 
 
+
 function preserveEventListeners(oldSocket, newSocket) {
     //get all event listeners from the old socket
     const listeners = oldSocket._callbacks || {};
@@ -491,8 +520,31 @@ ringSocket.on("disconnect", () => {
 
 });
 
+//? Game state between servers
+//create a new namespace
+//send the rooms and the proceeding queue everytime there is an update
+
+
+//? Turn based logic 
+// Critical sections: deck and the top card
+// can trigger a race condition
+// the first in player will get a boolean /token to play 
+// only he can play
+// draw and placing top cards, you send a response to server
+// server gives the token to next player
+// goes on like this
+
+// 3 threads on same port
+
+const serverNamespace = io.of("/ring");
+
+
+
+
+
 
 io.listen(port);
+
 
 console.log('UNO Server running on port ' + port);
 
