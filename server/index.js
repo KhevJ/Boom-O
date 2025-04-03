@@ -292,6 +292,7 @@ function handleSendDeck(socket, data) {
     const room = rooms.get(data.roomId);
     curr_player=room.players.findIndex((player)=>player.playerName==data.playerName);
     console.log(curr_player);
+    const len = room.players.length
 
 }
 
