@@ -48,8 +48,9 @@ public class DragDrop : MonoBehaviour
             if (distance < 0.6f)
             {
                 Card currentCard = GetComponent<Card>();
-                if (gameManager.CanPlaceCard(currentCard))
+                if (gameManager.CanPlaceCard(currentCard) && allowedTurn)
                 {
+                    allowedTurn=false;
                     transform.SetParent(discardPile);
                     WebSocketManager.Instance.topCard = gameManager.GetSpriteName(currentCard.color, currentCard.type, currentCard.number); // update the top card of websocket
                     var data = new Dictionary<string, object>
@@ -58,8 +59,13 @@ public class DragDrop : MonoBehaviour
                         { "topCard", gameManager.GetSpriteName(currentCard.color, currentCard.type, currentCard.number)},
                         {"playerName" , WebSocketManager.Instance.playerName}
                     };
+                    var turn_data = new Dictionary<string, object>
+                    {
+                        { "roomId", WebSocketManager.Instance.roomId },
+                        {"playerName" , WebSocketManager.Instance.playerName}
+                    };
                     WebSocketManager.Instance.SendData("sendTopCard", data); //send top card to server meaning to everyone except sender
-                    
+                    WebSocketManager.Instance.SendData("updateTurnAccess", turn_data);
                     transform.localPosition = Vector3.zero;
 
                     SpriteRenderer spriteRenderer = GetComponent<SpriteRenderer>();

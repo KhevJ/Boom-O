@@ -89,6 +89,11 @@ clientNamespace.on("connection", (socket) => {
         processQueue();
     })
 
+    socket.on("updateTurnAccess", (data) => {
+        messageQueue.push({ socket, action: "updateTurnAccess", data });
+        processQueue();
+    })
+
 
 
 
@@ -172,7 +177,10 @@ async function processQueue() {
             handleTopCard(socket, data);
         } else if (action === "wildcard"){
             handleWildCard(socket, data);
+        } else if (action === "updateTurnAccess"){
+            handleTurnAccess(socket, data);
         }
+
 
     }
 
@@ -277,6 +285,14 @@ function handleSendDeck(socket, data) {
 function handleSendPlayerCards(socket, data) {
     console.log("Received deck:", data);
    
+}
+
+function handleSendDeck(socket, data) {
+    console.log(data);
+    const room = rooms.get(data.roomId);
+    curr_player=room.players.findIndex((player)=>player.playerName==data.playerName);
+    console.log(curr_player);
+
 }
 
 

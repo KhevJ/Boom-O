@@ -384,8 +384,9 @@ public class GameManager : MonoBehaviour
 
     public void DrawCard()
     {
-        if (drawPile.childCount > 0) // Ensure there are cards left to draw
+        if (drawPile.childCount > 0 && allowedTurn) // Ensure there are cards left to draw
         {
+            allowedTurn=false;
             Transform drawnCard = drawPile.GetChild(0); // Get the top card
             drawnCard.SetParent(playerCards); // Move it to the player's hand
 
@@ -407,7 +408,15 @@ public class GameManager : MonoBehaviour
                         { "drawnCard",  spriteName },
                         {"playerName" , WebSocketManager.Instance.playerName}
                     };
+
+                    var turn_data = new Dictionary<string, object>
+                    {
+                        { "roomId", WebSocketManager.Instance.roomId },
+                        {"playerName" , WebSocketManager.Instance.playerName}
+                    };
+
                     WebSocketManager.Instance.SendData("drawCard", data); //sending  drawn card to server
+                    WebSocketManager.Instance.SendData("updateTurnAccess", turn_data )
                     SpriteRenderer spriteRenderer = drawnCard.GetComponent<SpriteRenderer>();
                     if (spriteRenderer != null)
                     {

@@ -31,6 +31,9 @@ public class WebSocketManager : MonoBehaviour
     public int wildcardColor = -1; //double check whether -1 is a color in card.cs
 
     public bool wildcardPlaced = false; // when wilcard everyone needs to know the color
+
+    public bool allowedTurn = false;
+
     public List<string> deck;
 
     public List<string> playerCards;
@@ -198,8 +201,15 @@ public class WebSocketManager : MonoBehaviour
             Debug.Log(wildcardColor);
         });
 
+        socket.On("allowedTurn", () => {
+            allowedTurn = true;
+            Debug.Log("Hi from allowedTurn")
+        });
+
 
         socket.Connect();
+
+        
     }
 
     private void SwapServer()
