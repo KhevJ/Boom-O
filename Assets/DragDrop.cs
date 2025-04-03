@@ -48,9 +48,9 @@ public class DragDrop : MonoBehaviour
             if (distance < 0.6f)
             {
                 Card currentCard = GetComponent<Card>();
-                if (gameManager.CanPlaceCard(currentCard) && allowedTurn)
+                if (gameManager.CanPlaceCard(currentCard) && WebSocketManager.Instance.allowedTurn)
                 {
-                    allowedTurn=false;
+                    WebSocketManager.Instance.allowedTurn=false;
                     transform.SetParent(discardPile);
                     WebSocketManager.Instance.topCard = gameManager.GetSpriteName(currentCard.color, currentCard.type, currentCard.number); // update the top card of websocket
                     var data = new Dictionary<string, object>

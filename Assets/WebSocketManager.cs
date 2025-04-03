@@ -201,9 +201,9 @@ public class WebSocketManager : MonoBehaviour
             Debug.Log(wildcardColor);
         });
 
-        socket.On("allowedTurn", () => {
+        socket.On("allowedTurn", (response) => {
             allowedTurn = true;
-            Debug.Log("Hi from allowedTurn")
+            Debug.Log("Hi from allowedTurn");
         });
 
 
