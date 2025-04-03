@@ -280,6 +280,7 @@ function handleSendDeck(socket, data) {
     }
     // ! should be broacast to everyone except the host Done Brother
     clientNamespace.to(data.roomId).emit("deckSaved", deck) //send deck to everyone
+    clientNamespace.to(room.players[0].socketId).emit("allowedTurn", "yourturn"); 
 }
 
 function handleSendPlayerCards(socket, data) {
@@ -287,13 +288,19 @@ function handleSendPlayerCards(socket, data) {
    
 }
 
-function handleSendDeck(socket, data) {
+function handleTurnAccess(socket, data) {
     console.log(data);
     const room = rooms.get(data.roomId);
-    curr_player=room.players.findIndex((player)=>player.playerName==data.playerName);
+    const curr_player=room.players.findIndex((player)=>player.playerName==data.playerName);
     console.log(curr_player);
-    const len = room.players.length
-
+    const len = room.players.length;
+    let nextIndex;
+    if(curr_player === len -1) nextIndex = 0;
+    else nextIndex = curr_player + 1;
+    
+    // console.log("index: ", nextIndex)
+    
+    clientNamespace.to(room.players[nextIndex].socketId).emit("allowedTurn", "yourturn"); 
 }
 
 
