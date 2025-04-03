@@ -33,10 +33,10 @@ const rooms = new Map();// will store all rooms
 
 clientNamespace.on("connection", (socket) => {
     console.log("A user connected");
-    const playerName = socket.handshake.query.playerName || "Unknown Player";
-    console.log(`Player Connected: ${playerName}`);
+    // const playerName = socket.handshake.query.playerName || "Unknown Player";
+    // console.log(`Player Connected: ${playerName}`);
 
-    socket.emit("welcome", { message: `Welcome, ${playerName}!` }); //add running
+    socket.emit("welcome", { message: `Welcome!` }); //add running
     // console.log(socket);
     // console.log(messageQueue);
 
@@ -111,12 +111,13 @@ async function processQueue() {
         if (action === 'createRoom') {
             //const roomId = uuidV4();
             const roomId = "Khevin's Room"
+            const playerName = uuidV4();
             await socket.join(roomId);
             let reverse = false;
             let chosenColor = -1
             rooms.set(roomId, {
                 roomId,
-                players: [{ id: socket.id }], //[player1, player2,  player3]
+                players: [{ playerName, socketId: socket.id }], //[player1, player2,  player3]
                 reverse,// for when we need to reverse the order of player \
                 chosenColor
                 // did you know yugioh is the best turn based game
@@ -124,15 +125,16 @@ async function processQueue() {
 
             console.log(`Room created: ${roomId}`);
             if (callback) {
-                callback(roomId); // that name of the player and the roomID is gonna be stored on Unity
+                callback(roomId, playerName); // that name of the player and the roomID is gonna be stored on Unity
             }
         }
 
         if (action === 'joinRoom') {
             // check if room exists and has a player waiting
-            console.log(data);
-            const room = rooms.get(data);
+            console.log(data); //data has the roomId
+            const room = rooms.get(data); 
             console.log(room);
+            const playerName = uuidV4();
             // add the joining user's data to the list of players in the room
             if (room && room.players.length < 2) {
                 await socket.join(data); // make the joining client join the room
@@ -140,12 +142,12 @@ async function processQueue() {
                     ...room,
                     players: [
                         ...room.players,
-                        { id: socket.id },
+                        { playerName, socketId: socket.id },
                     ],
                 };
                 rooms.set(data, roomUpdate);
                 if (callback) {
-                    callback(data);
+                    callback(data, playerName);
                 }
                 // console.log(socket.id)
                 // console.log(room.players)

@@ -20,6 +20,8 @@ public class WebSocketManager : MonoBehaviour
 
     public string roomId;
 
+    public string playerName;
+
     public string topCard;
 
     public bool updateTopCard = false;
@@ -243,6 +245,8 @@ public class WebSocketManager : MonoBehaviour
             if (response.Count > 0)
             {
                 roomId = response.GetValue<string>();
+                playerName = response.GetValue<string>(1);
+                Debug.Log("player Name " + playerName);
                 host = true;
                 Debug.Log("Room created with ID: " + roomId);
                 Debug.Log("Room created with ID: " + roomLength);
@@ -265,6 +269,8 @@ public class WebSocketManager : MonoBehaviour
             if (response.Count > 0)
             {
                 roomId = response.GetValue<string>();
+                playerName = response.GetValue<string>(1);
+                Debug.Log("player Name " + playerName);
                 if (roomId == "Error") Application.Quit();
 
                 Debug.Log("Room joined with ID from join: " + roomId);
