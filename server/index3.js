@@ -299,16 +299,18 @@ const servers = [
     { id: 4, port: 3000, next: 3001, nextId: 3 },
     { id: 3, port: 3001, next: 3002, nextId: 2 },
     { id: 2, port: 3002, next: 3003, nextId: 1 },
-    { id: 1, port: 3003, next: 3000, nextId: 4 },
+    { id: 1, port: 3003, next: 3004, nextId: 0 },
+    { id: 0, port: 3004, next: 3000, nextId: 4 },
 ];
 
 
 const links = new Map();
 
-links.set(3000, `http://localhost:3000/ring`); //change that here
-links.set(3001, `http://localhost:3001/ring`);
-links.set(3002, `http://localhost:3002/ring`);
-links.set(3003, `http://localhost:3003/ring`);
+links.set(3000, "http://localhost:3000/ring"); 
+links.set(3001, "http://localhost:3001/ring");
+links.set(3002, "http://localhost:3002/ring");
+links.set(3003, "http://localhost:3003/ring");
+links.set(3004, "http://localhost:3004/ring");
 
 //let's do some math here
 // 4-> 3 -> 2 -> 1 -> 4

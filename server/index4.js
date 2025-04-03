@@ -5,8 +5,7 @@ const http = require('http');
 const socket = require('socket.io');
 const server = http.createServer();
 const { v4: uuidV4 } = require('uuid');
-const port = 3001;
-
+const port = 3004;
 
 
 var io = socket(server, {
@@ -19,7 +18,6 @@ const clientNamespace = io.of("/client");
 
 clientNamespace.use((socket, next) => {
     if (socket.handshake.query.token === "UNITY") {
-    
         next();
     } else {
         next(new Error("Authentication error"));
@@ -155,19 +153,18 @@ async function processQueue() {
 
         }
         if (action === 'drawCard') {
-            //handleDrawCard(socket, data);
+            handleDrawCard(socket, data);
         } else if (action === 'sendDeck') {
             handleSendDeck(socket, data);
         } else if (action === 'sendPlayerCards') {
             handleSendPlayerCards(socket, data);
         } else if (action === 'sendTopCard') {
-            //handleTopCard(socket, data);
+            handleTopCard(socket, data);
         }
     }
 
     isProcessing = false; // unlock queue processing
 }
-
 let snapshotActive = false;
 let snapshotState = null;
 
@@ -189,7 +186,7 @@ function broadcastSnapshotToReplicas(){
     console.log(`Broadcasting snapshot from Leader server ${myId}`)
     console.log(JSON.stringify(snapshotState,null,2))
     for(let[port,link] of links){
-        if(port!=3001){
+        if(port!=3000){
             const ioClient = require("socket.io-client")
             const peerSocket = ioClient(link, { transports: ["websocket"] });
             peerSocket.on("connect", () => {
@@ -322,7 +319,6 @@ const servers = [
     { id: 0, port: 3004, next: 3000, nextId: 4 },
 ];
 
-
 const links = new Map();
 
 links.set(3000, "http://localhost:3000/ring"); 
@@ -330,12 +326,15 @@ links.set(3001, "http://localhost:3001/ring");
 links.set(3002, "http://localhost:3002/ring");
 links.set(3003, "http://localhost:3003/ring");
 links.set(3004, "http://localhost:3004/ring");
+
+
+
 //let's do some math here
 // 4-> 3 -> 2 -> 1 -> 4
 // for next id  -> (id - 1 + 4) % 4 || 4
 // for next port -> ((3001-3003) + 1)%3 + 3000 so next port = ((port - 3003) + 1)%3 +3000
 
-const myId = 3;
+const myId = 0;
 const myNext = servers.find(s => s.id === myId).next; //next port
 //const myAddress = servers.find(s => s.id === myId).address ;
 
@@ -382,8 +381,6 @@ ringNamespace.on("connection", (socket) => {
         console.log(JSON.stringify(state, null, 2));
         snapshotState = state; // update local state from leader
     });
-
-
     // Case message is leader(k):
     // leader message reception
     // leaderi = k
@@ -482,6 +479,7 @@ function announceLeader() {
 //     }
 
 // }, 10000);
+
 
 
 function preserveEventListeners(oldSocket, newSocket) {
