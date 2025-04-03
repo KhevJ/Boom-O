@@ -166,6 +166,39 @@ async function processQueue() {
     isProcessing = false; // unlock queue processing
 }
 
+let snapshotActive = false;
+let snapshotState = null;
+
+function captureSnapshotState() {
+    const allRooms = {};
+    rooms.forEach((room, roomId) => {
+        allRooms[roomId] = {
+            topCard: room.topCard,
+            deck: room.deck,
+            playerHands: room.playerHands,
+        };
+    });
+    return {id: myId,leader: currentLeader,rooms: allRooms};
+}
+
+function broadcastSnapshotToReplicas(){
+    if(myId!==currentLeader) return;
+    snapshotState = captureSnapshotState();
+    console.log(`Broadcasting snapshot from Leader server ${myId}`)
+    console.log(JSON.stringify(snapshotState,null,2))
+    for(let[port,link] of links){
+        if(port!=3002){
+            const ioClient = require("socket.io-client")
+            const peerSocket = ioClient(link, { transports: ["websocket"] });
+            peerSocket.on("connect", () => {
+                peerSocket.emit("REPLICA_SNAPSHOT", snapshotState);
+                peerSocket.disconnect();
+            });
+        }
+    }
+    
+}
+
 //example handlers for events 
 function handleDrawCard(socket, data) {
     console.log("Received drawn card:", data);
@@ -181,6 +214,7 @@ function handleDrawCard(socket, data) {
     };
     rooms.set(data.roomId, roomUpdate);
     socket.broadcast.to(data.roomId).emit('drawnCard', drawnCard);
+    broadcastSnapshotToReplicas();
 
 
     // if (gameObjects.deck) {
@@ -223,6 +257,7 @@ function handleTopCard(socket, data) {
 
     // console.log(rooms.get(data.roomId));
     socket.broadcast.to(data.roomId).emit('topCardUpdate', data.topCard);
+    broadcastSnapshotToReplicas();
 
 }
 
@@ -251,12 +286,14 @@ function handleSendDeck(socket, data) {
     }
     // ! should be broacast to everyone except the host Done Brother
     clientNamespace.to(data.roomId).emit("deckSaved", deck) //send deck to everyone
+    broadcastSnapshotToReplicas();
 }
 
 function handleSendPlayerCards(socket, data) {
     console.log("Received deck:", data);
     // gameObjects["playerHand"] = data;
     socket.emit('playerCardsSaved', "Server said why play UNO when Yugioh exists");
+    broadcastSnapshotToReplicas();
 }
 
 //helper function to send response with delay for testing
@@ -334,6 +371,12 @@ ringNamespace.on("connection", (socket) => {
             // running = false;
             announceLeader();
         }
+    });
+
+    socket.on("REPLICA_SNAPSHOT", (state) => {
+        console.log(`Server ${myId} received replicated snapshot from Leader`);
+        console.log(JSON.stringify(state, null, 2));
+        snapshotState = state; // update local state from leader
     });
 
 
