@@ -496,8 +496,8 @@ ringSocket.on("disconnect", () => {
     const server = servers.find(s => s.id === myId);
 
     if (server.nextId == currentLeader) {
-        server.next = ((server.next - 3000) + 1) % 4 + 3000; //update port  //((port - 3000) + 1) % 4 + 3000
-        server.nextId = (server.nextId - 1) % 4 || 4; //update nextId
+        server.next = (server.next === 3004) ? 3000 : server.next + 1; //update port  //(port === 3004) ? 3000 : port + 1
+        server.nextId = (server.nextId === 0) ? 4 : server.nextId - 1; 
 
         const oldSocket = ringSocket;
         //start new connection with the next server, ignoring crashed ones

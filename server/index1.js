@@ -325,19 +325,11 @@ const servers = [
 
 const links = new Map();
 
-<<<<<<< HEAD
 links.set(3000, `http://localhost:3000/ring`); //change that here
 links.set(3001, `http://localhost:3001/ring`);
 links.set(3002, `http://localhost:3002/ring`);
 links.set(3003, `http://localhost:3003/ring`);
 links.set(3004, `http://localhost:3004/ring`);
-=======
-links.set(3000, "https://d8c6-2604-3d09-e7e-b800-84a6-c14a-2091-2650.ngrok-free.app/ring"); 
-links.set(3001, "https://cf6c-2604-3d09-d80-b600-17b-981f-74b6-c25d.ngrok-free.app/ring");
-links.set(3002, "https://7ebf-2604-3d09-e7e-b800-8544-e02d-6756-906e.ngrok-free.app/ring");
-links.set(3003, "https://85ca-174-0-240-161.ngrok-free.app/ring");
-links.set(3004, "https://9ede-2604-3d09-d75-8900-9c42-7da9-6afa-5688.ngrok-free.app/ring");
->>>>>>> connecting-servers
 //let's do some math here
 // 4-> 3 -> 2 -> 1 -> 4
 // for next id  -> (id - 1 + 4) % 4 || 4
@@ -514,8 +506,8 @@ ringSocket.on("disconnect", () => {
     const server = servers.find(s => s.id === myId);
 
     if (server.nextId == currentLeader) {
-        server.next = ((server.next - 3000) + 1) % 4 + 3000; //update port  //((port - 3000) + 1) % 4 + 3000
-        server.nextId = (server.nextId - 1) % 4 || 4; //update nextId
+        server.next = (server.next === 3004) ? 3000 : server.next + 1; //update port  //(port === 3004) ? 3000 : port + 1
+        server.nextId = (server.nextId === 0) ? 4 : server.nextId - 1; 
 
         const oldSocket = ringSocket;
         //start new connection with the next server, ignoring crashed ones
