@@ -37,13 +37,13 @@ public class WebSocketManager : MonoBehaviour
     public List<string> deck;
 
     public List<string> playerCards;
-    private string serverUrl = "http://localhost:3000/client";
+    private string serverUrl = "http://https//d8c6-2604-3d09-e7e-b800-84a6-c14a-2091-2650.ngrok-free.app:3000/client";
     private Dictionary<int, string> serverDictionary = new()
     {
         { 4, "http://localhost:3000/client" }, //Khevin's Server
         { 3, "http://localhost:3001/client" },
         { 2, "http://localhost:3002/client" },
-        { 1, "http://localhost:3003/client" }
+        { 1, "http://localhost:3003/client" },
         { 0, "http://localhost:3004/client" }
     };
 
