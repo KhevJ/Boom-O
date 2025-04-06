@@ -235,14 +235,7 @@ function handleDrawCard(socket, data) {
     broadcastSnapshotToReplicas();
 
 
-    // if (gameObjects.deck) {
-    //     if (gameObjects.deck.length > 0 && gameObjects.deck[0] == data) {
-    //         const topCard = gameObjects.deck.shift();
-    //         //console.log("here")
-    //         socket.emit('drawnCard', "Server said You drew " + topCard);
-    //         //here add something to broadcast to all other players in the room/game
-    //     }
-    // }
+
 }
 
 function handleTopCard(socket, data) {
