@@ -35,7 +35,7 @@ clientNamespace.on("connection", (socket) => {
     const playerName = socket.handshake.query.playerName || "Unknown Player";
     console.log(`Player Connected: ${playerName}`);
 
-    socket.emit("welcome", { message: `Welcome, ${playerName}!` }); //add running
+    socket.emit("welcome", { serverIdFromServer: currentLeader }); //add running
     // console.log(socket);
     // console.log(messageQueue);
 

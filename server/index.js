@@ -35,7 +35,7 @@ clientNamespace.on("connection", (socket) => {
     // const playerName = socket.handshake.query.playerName || "Unknown Player";
     // console.log(`Player Connected: ${playerName}`);
 
-    socket.emit("welcome", { message: `Welcome!` }); //add running
+    socket.emit("welcome", { serverIdFromServer: currentLeader }); //add running
     // console.log(socket);
     // console.log(messageQueue);
 
@@ -122,7 +122,7 @@ async function processQueue() {
                 roomId,
                 players: [{ playerName, socketId: socket.id }], //[player1, player2,  player3]
                 reverse,// for when we need to reverse the order of player \
-                chosenColor,// for when you place a wildcard
+                chosenColor: undefined,// for when you place a wildcard
                 playerHands: undefined, //hands of all players
                 deck: undefined, // deck of game
                 topCard: undefined, //current top card of game
@@ -205,9 +205,9 @@ function captureSnapshotState() {
     return {id: myId,leader: currentLeader,rooms: allRooms};
 }
 
-setInterval(() => {
-    broadcastSnapshotToReplicas();
-}, 3000)
+// setInterval(() => {
+//     broadcastSnapshotToReplicas();
+// }, 3000)
 
 function broadcastSnapshotToReplicas(){
     if(myId!==currentLeader) return;

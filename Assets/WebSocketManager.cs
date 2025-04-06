@@ -37,7 +37,7 @@ public class WebSocketManager : MonoBehaviour
     public List<string> deck;
 
     public List<string> playerCards;
-    private string serverUrl = "http://https//d8c6-2604-3d09-e7e-b800-84a6-c14a-2091-2650.ngrok-free.app:3000/client";
+    private string serverUrl = "http://localhost:3000/client";
     private Dictionary<int, string> serverDictionary = new()
     {
         { 4, "http://localhost:3000/client" }, //Khevin's Server
@@ -135,19 +135,25 @@ public class WebSocketManager : MonoBehaviour
         // we can't talk to anyone
 
         {
-            Debug.Log("Switched to new leader. Server id from welcome: " + currentServerId);
-            // if (currentServerId == -1)
-            // {
-            //     currentServerId = serverIdFromServer;
-            // }
-            // else
-            // {
-            //     // If the welcome event returns a different id, update the current server id.
+            int serverIdFromServer = response.GetValue<int>();
+            
+            if (currentServerId == -1)
+            {
+                currentServerId = serverIdFromServer;
+            }
+            else
+            {
+                // If the welcome event returns a different id, update the current server id.
 
-            //     currentServerId = serverIdFromServer;
-            // }
-            // // Log the welcome message.
-            // Debug.Log(welcomeData.Value<string>("message"));
+               if (currentServerId != serverIdFromServer)
+               {
+                    SwapServer();
+
+               }
+
+            }
+            // Log the welcome message.
+            Debug.Log("Switched to new leader. Server id from welcome: " + currentServerId);
         });
 
         socket.On("drawnCard", (response) =>
@@ -231,7 +237,7 @@ public class WebSocketManager : MonoBehaviour
     private int GetNextServerId(int current)
     {
         int next = current - 1;
-        if (next < 1)
+        if (next < 0)
             next = 4; // wrap-around to highest id
         return next;
     }
