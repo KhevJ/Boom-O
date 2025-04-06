@@ -118,11 +118,12 @@ async function processQueue() {
             const playerName = uuidV4();
             await socket.join(roomId);
             let reverse = false;
+            let chosenColor = -1;
             rooms.set(roomId, {
                 roomId,
                 players: [{ playerName, socketId: socket.id }], //[player1, player2,  player3]
                 reverse,// for when we need to reverse the order of player \
-                chosenColor: undefined,// for when you place a wildcard
+                chosenColor,// for when you place a wildcard
                 playerHands: undefined, //hands of all players
                 deck: undefined, // deck of game
                 topCard: undefined, //current top card of game
@@ -225,6 +226,19 @@ function broadcastSnapshotToReplicas(){
         }
     }
     
+}
+
+
+function handleWildCard(socket,data){
+    const room = rooms.get(data.roomId);
+    // console.log(room);
+    const roomUpdate = {
+        ...room,
+        chosenColor: data.chosenColor
+    };
+    rooms.set(data.roomId, roomUpdate);
+    console.log(data.chosenColor);
+    socket.broadcast.to(data.roomId).emit("wildcardColor", data.chosenColor);
 }
 
 //example handlers for events 
