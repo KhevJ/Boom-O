@@ -340,20 +340,22 @@ const servers = [
 
 const links = new Map();
 
-links.set(3000, `http://localhost:3000/ring`); //change that here
+links.set(3000, `http://localhost:3000/ring`); 
 links.set(3001, `http://localhost:3001/ring`);
 links.set(3002, `http://localhost:3002/ring`);
 links.set(3003, `http://localhost:3003/ring`);
 links.set(3004, `http://localhost:3004/ring`);
 
-//let's do some math here
-// 4-> 3 -> 2 -> 1 -> 4
-// for next id  -> (id - 1 + 4) % 4 || 4
-// for next port -> ((3001-3003) + 1)%3 + 3000 so next port = ((port - 3003) + 1)%3 +3000
+//let's improve some math here
+// wanted to use modulo but this does work
+// man use modulo
+//  0 -> 4 -> 3 -> 2 -> 1 -> 0 -> 4
+// for next id  -> (id === 0) ? 4 : id - 1 
+// for next port -> (port === 3004) ? 3000 : port + 1
 
 const myId = 4;
 const myNext = servers.find(s => s.id === myId).next; //next port
-//const myAddress = servers.find(s => s.id === myId).address ;
+
 
 let currentLeader = 4;
 let running = false;
@@ -521,8 +523,8 @@ ringSocket.on("disconnect", () => {
     const server = servers.find(s => s.id === myId);
 
     if (server.nextId == currentLeader) {
-        server.next = ((server.next - 3000) + 1) % 4 + 3000; //update port  //((port - 3000) + 1) % 4 + 3000
-        server.nextId = (server.nextId - 1) % 4 || 4; //update nextId
+        server.next = (server.next === 3004) ? 3000 : server.next + 1; //update port  //(port === 3004) ? 3000 : port + 1
+        server.nextId = (server.nextId === 0) ? 4 : server.nextId - 1; //update nextId //(id === 0) ? 4 : id - 1 
 
         const oldSocket = ringSocket;
         //start new connection with the next server, ignoring crashed ones
