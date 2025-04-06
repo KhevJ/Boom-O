@@ -122,8 +122,10 @@ async function processQueue() {
                 roomId,
                 players: [{ playerName, socketId: socket.id }], //[player1, player2,  player3]
                 reverse,// for when we need to reverse the order of player \
-                chosenColor
-                // did you know yugioh is the best turn based game
+                chosenColor,// for when you place a wildcard
+                playerHands: undefined, //hands of all players
+                deck: undefined, // deck of game
+                topCard: undefined, //current top card of game
             });
 
             console.log(`Room created: ${roomId}`);
@@ -191,13 +193,21 @@ function captureSnapshotState() {
     const allRooms = {};
     rooms.forEach((room, roomId) => {
         allRooms[roomId] = {
+            // roomId: room.roomId,
             topCard: room.topCard,
             deck: room.deck,
             playerHands: room.playerHands,
+            // chosenColor: room.chosenColor,
+            // players: room.players,
+            // reverse: room.reverse
         };
     });
     return {id: myId,leader: currentLeader,rooms: allRooms};
 }
+
+setInterval(() => {
+    broadcastSnapshotToReplicas();
+}, 3000)
 
 function broadcastSnapshotToReplicas(){
     if(myId!==currentLeader) return;
