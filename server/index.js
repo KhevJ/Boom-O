@@ -28,7 +28,7 @@ clientNamespace.use((socket, next) => {
 // const gameObjects = {}; // store game state
 const messageQueue = []; // queue to process messages in order
 let isProcessing = false;
-const rooms = new Map();// will store all rooms
+let rooms = new Map();// will store all rooms
 
 clientNamespace.on("connection", (socket) => {
     console.log("A user connected");
@@ -187,28 +187,27 @@ async function processQueue() {
 
     isProcessing = false; // unlock queue processing
 }
-let snapshotActive = false;
+// let snapshotActive = false;
 let snapshotState = null;
+
 
 function captureSnapshotState() {
     const allRooms = {};
     rooms.forEach((room, roomId) => {
         allRooms[roomId] = {
-            // roomId: room.roomId,
+            roomId: room.roomId,
             topCard: room.topCard,
             deck: room.deck,
             playerHands: room.playerHands,
-            // chosenColor: room.chosenColor,
-            // players: room.players,
-            // reverse: room.reverse
+            chosenColor: room.chosenColor,
+            players: room.players,
+            reverse: room.reverse
         };
     });
     return {id: myId,leader: currentLeader,rooms: allRooms};
 }
 
-// setInterval(() => {
-//     broadcastSnapshotToReplicas();
-// }, 3000)
+
 
 function broadcastSnapshotToReplicas(){
     if(myId!==currentLeader) return;
@@ -420,10 +419,15 @@ ringNamespace.on("connection", (socket) => {
     });
 
     socket.on("REPLICA_SNAPSHOT", (state) => {
+        //tob stuff here
         console.log(`Server ${myId} received replicated snapshot from Leader`);
         console.log(JSON.stringify(state, null, 2));
         snapshotState = state; // update local state from leader
+        console.log("the snapshot" ,snapshotState);
+
     });
+
+
     // Case message is leader(k):
     // leader message reception
     // leaderi = k
