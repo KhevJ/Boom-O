@@ -4,6 +4,7 @@ using Mirror.Examples.MultipleMatch;
 using UnityEditor.Tilemaps;
 using UnityEngine;
 using System.Linq;
+using Newtonsoft.Json.Linq;
 
 
 public class GameManager : MonoBehaviour
@@ -31,10 +32,12 @@ public class GameManager : MonoBehaviour
         WebSocketManager.Instance.Socket.On("forceDraw", (response) =>
         {
             var data = response.GetValue<Dictionary<string, object>>();
-            int drawCount = int.Parse(data["drawCount"].ToString());
+            int count = int.Parse(data["count"].ToString());
+            string reason = data["reason"].ToString();
 
-            Debug.Log("GameManager received forceDraw with " + drawCount + " cards");
-            ForceDrawCards(drawCount);
+            Debug.Log($"You must draw {count} card(s): {reason}");
+
+            WebSocketManager.Instance.pendingDraws = count;
         });
     }
 
@@ -392,9 +395,21 @@ public class GameManager : MonoBehaviour
 
     public void DrawCard()
     {
-        if (drawPile.childCount > 0 && WebSocketManager.Instance.allowedTurn) // Ensure there are cards left to draw
+        bool isForcedDraw = WebSocketManager.Instance.pendingDraws > 0;
+        if (drawPile.childCount > 0 && (WebSocketManager.Instance.allowedTurn || isForcedDraw)) // Ensure there are cards left to draw
         {
-            WebSocketManager.Instance.allowedTurn=false;
+            if (!isForcedDraw)
+            {
+                WebSocketManager.Instance.allowedTurn = false;
+
+                var turn_data = new Dictionary<string, object>
+                {
+                    { "roomId", WebSocketManager.Instance.roomId },
+                    { "playerName", WebSocketManager.Instance.playerName }
+                };
+                WebSocketManager.Instance.SendData("updateTurnAccess", turn_data);
+            }
+            //WebSocketManager.Instance.allowedTurn=false;
             Transform drawnCard = drawPile.GetChild(0); // Get the top card
             drawnCard.SetParent(playerCards); // Move it to the player's hand
 
@@ -436,8 +451,28 @@ public class GameManager : MonoBehaviour
                     Debug.LogError($"Sprite not found: {spriteName}");
                 }
             }
+            if (isForcedDraw)
+            {
+                WebSocketManager.Instance.pendingDraws--;
+                Debug.Log("You have " + WebSocketManager.Instance.pendingDraws + " forced draws left.");
+
+                if (WebSocketManager.Instance.pendingDraws == 0 && isForcedDraw)
+                {
+                    Debug.Log("Forced draw complete. Sending turn update.");
+                    //WebSocketManager.Instance.allowedTurn = false; // Prevent drawing again
+
+                    var turn_data = new Dictionary<string, object>
+                    {
+                        { "roomId", WebSocketManager.Instance.roomId },
+                        { "playerName", WebSocketManager.Instance.playerName }
+                    };
+                    WebSocketManager.Instance.SendData("updateTurnAccess", turn_data);
+                }
+            }
 
         }
+        
+
         else
         {
             Debug.Log("No more cards left in the draw pile!");
@@ -864,43 +899,43 @@ public class GameManager : MonoBehaviour
 
     //    RealignPlayerCards();
     //}
-    public void ForceDrawCards(int count)
-    {
-        Debug.Log("The count is "+ count);
-        Debug.Log("I am inside ForceDrawCards");
-        for (int i = 0; i < count; i++)
-        {
-            if (drawPile.childCount == 0 || deck.Count == 0)
-            {
-                Debug.LogWarning("No cards left to draw.");
-                break;
-            }
+    //public void ForceDrawCards(int count)
+    //{
+    //    Debug.Log("The count is "+ count);
+    //    Debug.Log("I am inside ForceDrawCards");
+    //    for (int i = 0; i < count; i++)
+    //    {
+    //        if (drawPile.childCount == 0 || deck.Count == 0)
+    //        {
+    //            Debug.LogWarning("No cards left to draw.");
+    //            break;
+    //        }
 
-            Transform drawnCard = drawPile.GetChild(0);
-            Debug.Log("Drawing card: " + drawnCard.name);
-            drawnCard.SetParent(playerCards);
+    //        Transform drawnCard = drawPile.GetChild(0);
+    //        Debug.Log("Drawing card: " + drawnCard.name);
+    //        drawnCard.SetParent(playerCards);
 
-            Card cardScript = drawnCard.GetComponent<Card>();
-            if (cardScript != null)
-            {
-                string spriteName = GetSpriteName(cardScript.color, cardScript.type, cardScript.number);
-                if (cardSprites.ContainsKey(spriteName))
-                {
-                    deck.RemoveAt(0); // remove from internal deck list
-                    SpriteRenderer spriteRenderer = drawnCard.GetComponent<SpriteRenderer>();
-                    if (spriteRenderer != null)
-                    {
-                        spriteRenderer.sprite = cardSprites[spriteName];
-                    }
+    //        Card cardScript = drawnCard.GetComponent<Card>();
+    //        if (cardScript != null)
+    //        {
+    //            string spriteName = GetSpriteName(cardScript.color, cardScript.type, cardScript.number);
+    //            if (cardSprites.ContainsKey(spriteName))
+    //            {
+    //                deck.RemoveAt(0); // remove from internal deck list
+    //                SpriteRenderer spriteRenderer = drawnCard.GetComponent<SpriteRenderer>();
+    //                if (spriteRenderer != null)
+    //                {
+    //                    spriteRenderer.sprite = cardSprites[spriteName];
+    //                }
 
-                    drawnCard.gameObject.SetActive(true);
-                    RealignPlayerCards();
+    //                drawnCard.gameObject.SetActive(true);
+    //                RealignPlayerCards();
 
-                    Debug.Log("Force drew: " + spriteName);
-                }
-            }
-        }
-    }
+    //                Debug.Log("Force drew: " + spriteName);
+    //            }
+    //        }
+    //    }
+    //}
 
     private void OnApplicationQuit()
     {

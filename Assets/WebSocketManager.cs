@@ -38,6 +38,7 @@ public class WebSocketManager : MonoBehaviour
     public bool allowedTurn = false;
     ////here 
     private GameManager gameManager;
+    public int pendingDraws = 0;
 
     public List<string> deck;
 

@@ -353,8 +353,9 @@ function handleTurnAccess(socket, data) {
     else nextIndex = curr_player + 1;
     
     // console.log("index: ", nextIndex)
-    
-    clientNamespace.to(room.players[nextIndex].socketId).emit("allowedTurn", "yourturn"); 
+    const targetPlayer = room.players[nextIndex].playerName;
+    clientNamespace.to(room.players[nextIndex].socketId).emit("allowedTurn", { playerName: targetPlayer, message: "yourturn" });
+    console.log(`Turn passed from ${data.playerName} to ${targetPlayer}`);
 }
 
 function handleDrawEffect(socket, data) {
@@ -366,7 +367,7 @@ function handleDrawEffect(socket, data) {
     const currentIndex = players.findIndex(p => p.playerName === triggeredBy);
     if (currentIndex === -1) return;
 
-    // ➡ Get next player
+    // Get next player
     const nextIndex = (currentIndex + 1) % players.length;
     const nextPlayer = players[nextIndex].playerName;
 
@@ -388,12 +389,18 @@ function handleDrawEffect(socket, data) {
 
     // Send drawn cards to next player
     const nextSocketId = players[nextIndex].socketId;
-    clientNamespace.to(nextSocketId).emit("forceDraw", { drawCount: drawnCards.length });
+    clientNamespace.to(nextSocketId).emit("forceDraw", {
+        drawCount: drawnCards.length,
+        playerName: nextPlayer //  include this
+      });
 
     // Skip turn → give turn to player after the one who drew
     const nextNextIndex = (nextIndex + 1) % players.length;
     const nextNextSocketId = players[nextNextIndex].socketId;
-    clientNamespace.to(nextNextSocketId).emit("allowedTurn", "yourturn");
+    clientNamespace.to(nextSocketId).emit("forceDraw", {
+        count: drawCount,
+        reason: `${triggeredBy} played a +${drawCount} card. You must draw ${drawCount} card(s).`
+      });
 
     broadcastSnapshotToReplicas();
 }
