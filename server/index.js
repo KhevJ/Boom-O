@@ -274,6 +274,12 @@ function handleTopCard(socket, data) {
         if (index !== -1) {
             hand.splice(index, 1);
         }
+
+        if (data.topCard.includes("Reverse")) {
+            room.reverse = !room.reverse; 
+            console.log(`Reverse card played. Reverse is now: ${room.reverse}`);
+        }
+
         roomUpdate = {
             ...room,
             topCard: data.topCard,
@@ -341,10 +347,19 @@ function handleTurnAccess(socket, data) {
     console.log(curr_player);
     const len = room.players.length;
     let nextIndex;
-    if(curr_player === len -1) nextIndex = 0;
-    else nextIndex = curr_player + 1;
+    if(room.reverse){
+        if (len === 2) {
+            nextIndex = curr_player; 
+            room.reverse=false;
+        }
+    }
+    else{
+        if(curr_player === len -1) nextIndex = 0;
+        else nextIndex = curr_player + 1;
+    }
     
-    // console.log("index: ", nextIndex)
+    
+     console.log("index: ", nextIndex)
     
     clientNamespace.to(room.players[nextIndex].socketId).emit("allowedTurn", "yourturn"); 
 }
