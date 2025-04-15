@@ -76,6 +76,7 @@ public class DragDrop : MonoBehaviour
 
                     gameManager.UpdateTopCard(currentCard);
                     gameManager.RealignPlayerCards();
+                    gameManager.HandleDrawEffect(currentCard);
 
                     if (currentCard.type == Card.CardType.Wild || currentCard.type == Card.CardType.WildDraw)
                     {

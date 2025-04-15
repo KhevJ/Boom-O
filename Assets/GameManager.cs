@@ -28,6 +28,14 @@ public class GameManager : MonoBehaviour
     void Start()
     {
         StartCoroutine(InitializeGame());
+        WebSocketManager.Instance.Socket.On("forceDraw", (response) =>
+        {
+            var data = response.GetValue<Dictionary<string, object>>();
+            int drawCount = int.Parse(data["drawCount"].ToString());
+
+            Debug.Log("GameManager received forceDraw with " + drawCount + " cards");
+            ForceDrawCards(drawCount);
+        });
     }
 
     IEnumerator InitializeGame()
@@ -795,7 +803,104 @@ public class GameManager : MonoBehaviour
     //     }
     // }
 
+    public void HandleDrawEffect(Card card)
+    {
+        int drawCount = card.type == Card.CardType.Draw ? 2 :
+                        card.type == Card.CardType.WildDraw ? 4 : 0;
 
+        if (drawCount == 0) return;
+
+        var data = new Dictionary<string, object>
+    {
+        { "roomId", WebSocketManager.Instance.roomId },
+        { "drawCount", drawCount },
+        { "triggeredBy", WebSocketManager.Instance.playerName }
+    };
+
+        WebSocketManager.Instance.SendData("drawEffect", data);
+
+        if (card.type == Card.CardType.WildDraw)
+        {
+            colorPickerUI.SetActive(true);
+        }
+    }
+
+    //public void AddCardsToPlayerHand(List<string> cardNames)
+    //{
+    //    float spacing = 0.3f;
+    //    int i = playerCards.childCount;
+    //    float startX = -((i + cardNames.Count - 1) * spacing) / 2;
+
+    //    foreach (string cardName in cardNames)
+    //    {
+    //        GameObject cardObject = null;
+    //        int j = 0;
+
+    //        foreach (var pair in UNODeckList)
+    //        {
+    //            if (pair.Key == cardName)
+    //            {
+    //                cardObject = pair.Value;
+    //                break;
+    //            }
+    //            j++;
+    //        }
+
+    //        if (cardObject == null)
+    //        {
+    //            Debug.LogWarning("Card not found: " + cardName);
+    //            continue;
+    //        }
+
+    //        Card cardScript = cardObject.GetComponent<Card>();
+    //        cardObject.transform.SetParent(playerCards);
+    //        cardObject.transform.localPosition = new Vector3(startX + (i * spacing), 0, 0);
+    //        SpriteRenderer sr = cardObject.GetComponent<SpriteRenderer>();
+    //        if (sr != null) sr.sortingOrder = i;
+    //        cardScript.gameObject.SetActive(true);
+    //        UNODeckList.RemoveAt(j);
+    //        i++;
+    //    }
+
+    //    RealignPlayerCards();
+    //}
+    public void ForceDrawCards(int count)
+    {
+        Debug.Log("The count is "+ count);
+        Debug.Log("I am inside ForceDrawCards");
+        for (int i = 0; i < count; i++)
+        {
+            if (drawPile.childCount == 0 || deck.Count == 0)
+            {
+                Debug.LogWarning("No cards left to draw.");
+                break;
+            }
+
+            Transform drawnCard = drawPile.GetChild(0);
+            Debug.Log("Drawing card: " + drawnCard.name);
+            drawnCard.SetParent(playerCards);
+
+            Card cardScript = drawnCard.GetComponent<Card>();
+            if (cardScript != null)
+            {
+                string spriteName = GetSpriteName(cardScript.color, cardScript.type, cardScript.number);
+                if (cardSprites.ContainsKey(spriteName))
+                {
+                    deck.RemoveAt(0); // remove from internal deck list
+                    SpriteRenderer spriteRenderer = drawnCard.GetComponent<SpriteRenderer>();
+                    if (spriteRenderer != null)
+                    {
+                        spriteRenderer.sprite = cardSprites[spriteName];
+                    }
+
+                    drawnCard.gameObject.SetActive(true);
+                    RealignPlayerCards();
+
+                    Debug.Log("Force drew: " + spriteName);
+                }
+            }
+        }
+    }
 
     private void OnApplicationQuit()
     {

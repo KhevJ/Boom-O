@@ -13,6 +13,9 @@ public class WebSocketManager : MonoBehaviour
     public static WebSocketManager Instance => instance;
 
     private SocketIOUnity socket;
+    public SocketIOUnity Socket => socket;
+
+
     public bool connected = false;
 
     public int roomLength = 0;
@@ -33,6 +36,8 @@ public class WebSocketManager : MonoBehaviour
     public bool wildcardPlaced = false; // when wilcard everyone needs to know the color
 
     public bool allowedTurn = false;
+    ////here 
+    private GameManager gameManager;
 
     public List<string> deck;
 
@@ -212,6 +217,29 @@ public class WebSocketManager : MonoBehaviour
             allowedTurn = true;
             Debug.Log("Hi from allowedTurn");
         });
+
+        // socket.On("forceDraw", (response) =>
+        // {
+        //     List<object> rawCards = response.GetValue<List<object>>();
+        //     int drawCount = rawCards.Count;
+
+        //     Debug.Log("Received FORCEDraw with " + drawCount + " cards");
+
+        //     GameManager gameManager = FindObjectOfType<GameManager>();
+        //     Debug.Log("Trying to enter GM.");
+        //     if (gameManager != null)
+        //     {   
+        //         Debug.Log("Entered to make force draw cards.");
+        //         gameManager.ForceDrawCards(drawCount);
+        //     }
+        //     else
+        //     {
+        //         Debug.LogWarning("GameManager not found when processing forceDraw.");
+        //     }
+        // });
+
+
+
 
 
         socket.Connect();

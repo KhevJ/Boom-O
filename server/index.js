@@ -93,6 +93,11 @@ clientNamespace.on("connection", (socket) => {
         processQueue();
     })
 
+    socket.on("drawEffect", (data) => {
+        messageQueue.push({ socket, action: "drawEffect", data });
+        processQueue();
+    });
+
 
 
 
@@ -180,7 +185,10 @@ async function processQueue() {
             handleWildCard(socket, data);
         } else if (action === "updateTurnAccess"){
             handleTurnAccess(socket, data);
+        } else if (action === "drawEffect") {
+            handleDrawEffect(socket, data);
         }
+        
 
 
     }
@@ -347,6 +355,47 @@ function handleTurnAccess(socket, data) {
     // console.log("index: ", nextIndex)
     
     clientNamespace.to(room.players[nextIndex].socketId).emit("allowedTurn", "yourturn"); 
+}
+
+function handleDrawEffect(socket, data) {
+    const { roomId, drawCount, triggeredBy } = data;
+    const room = rooms.get(roomId);
+    if (!room) return;
+
+    const players = room.players;
+    const currentIndex = players.findIndex(p => p.playerName === triggeredBy);
+    if (currentIndex === -1) return;
+
+    // ➡ Get next player
+    const nextIndex = (currentIndex + 1) % players.length;
+    const nextPlayer = players[nextIndex].playerName;
+
+    const drawnCards = [];
+    for (let i = 0; i < drawCount; i++) {
+        const card = room.deck.shift();
+        if (!card) break;
+        room.playerHands[nextPlayer].push(card);
+        drawnCards.push(card);
+    }
+
+    // Update room state
+    const updatedRoom = {
+        ...room,
+        deck: room.deck,
+        playerHands: room.playerHands
+    };
+    rooms.set(roomId, updatedRoom);
+
+    // Send drawn cards to next player
+    const nextSocketId = players[nextIndex].socketId;
+    clientNamespace.to(nextSocketId).emit("forceDraw", { drawCount: drawnCards.length });
+
+    // Skip turn → give turn to player after the one who drew
+    const nextNextIndex = (nextIndex + 1) % players.length;
+    const nextNextSocketId = players[nextNextIndex].socketId;
+    clientNamespace.to(nextNextSocketId).emit("allowedTurn", "yourturn");
+
+    broadcastSnapshotToReplicas();
 }
 
 
