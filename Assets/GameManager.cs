@@ -439,7 +439,7 @@ public class GameManager : MonoBehaviour
                     };
 
                     WebSocketManager.Instance.SendData("drawCard", data); //sending  drawn card to server
-                    WebSocketManager.Instance.SendData("updateTurnAccess", turn_data );
+                    //WebSocketManager.Instance.SendData("updateTurnAccess", turn_data );
                     SpriteRenderer spriteRenderer = drawnCard.GetComponent<SpriteRenderer>();
                     if (spriteRenderer != null)
                     {
@@ -459,7 +459,7 @@ public class GameManager : MonoBehaviour
                 if (WebSocketManager.Instance.pendingDraws == 0 && isForcedDraw)
                 {
                     Debug.Log("Forced draw complete. Sending turn update.");
-                    //WebSocketManager.Instance.allowedTurn = false; // Prevent drawing again
+                    WebSocketManager.Instance.allowedTurn = false; // Prevent drawing again
 
                     var turn_data = new Dictionary<string, object>
                     {
