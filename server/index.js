@@ -118,6 +118,7 @@ async function processQueue() {
             const playerName = uuidV4();
             await socket.join(roomId);
             let reverse = false;
+            let skip = false;
             let chosenColor = -1;
             rooms.set(roomId, {
                 roomId,
@@ -127,6 +128,7 @@ async function processQueue() {
                 playerHands: undefined, //hands of all players
                 deck: undefined, // deck of game
                 topCard: undefined, //current top card of game
+                skip,
             });
 
             console.log(`Room created: ${roomId}`);
@@ -280,6 +282,11 @@ function handleTopCard(socket, data) {
             console.log(`Reverse card played. Reverse is now: ${room.reverse}`);
         }
 
+         if (data.topCard.includes("Skip")) {
+            room.skip = true; 
+            console.log("Skip card played!");
+        }
+
         roomUpdate = {
             ...room,
             topCard: data.topCard,
@@ -351,6 +358,12 @@ function handleTurnAccess(socket, data) {
         if (len === 2) {
             nextIndex = curr_player; 
             room.reverse=false;
+        }
+    }
+    else if(room.skip){
+        if (len === 2) {
+            nextIndex = curr_player; 
+            room.skip=false;
         }
     }
     else{
