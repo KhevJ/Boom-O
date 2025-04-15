@@ -21,6 +21,8 @@ public class GameManager : MonoBehaviour
     public Transform discardPile;
     public GameObject colorPickerUI;
 
+    public Transform opponentCards;
+
 
     public List<KeyValuePair<string, GameObject>> UNODeckList = new();
 
@@ -29,6 +31,16 @@ public class GameManager : MonoBehaviour
     {
         StartCoroutine(InitializeGame());
     }
+
+    // void OnEnable() {
+    //     Debug.Log("GameManager enabled");
+    //     if (WebSocketManager.Instance != null)
+    //         WebSocketManager.Instance.OnCardCountsUpdated += UpdateOpponentHandUI;
+    //         if (WebSocketManager.Instance.CardCounts != null)
+    //         {
+    //             UpdateOpponentHandUI(WebSocketManager.Instance.CardCounts);
+    //         }       
+    // }
 
     IEnumerator InitializeGame()
     {
@@ -163,6 +175,37 @@ public class GameManager : MonoBehaviour
             { "deck", string_deck }
         };
         WebSocketManager.Instance.SendData("sendDeck", data);
+    }
+
+
+    public void UpdateOpponentHandUI(Dictionary<string, int> counts){
+        if(counts==null) return;
+
+        string myPlayerName = WebSocketManager.Instance.playerName;
+        int opponentCount = 0;
+        foreach (var pair in counts){
+            if(pair.Key!=myPlayerName){
+                opponentCount += pair.Value;
+            }
+        }
+
+        if(opponentCount!=opponentCards.childCount){
+            foreach (Transform child in opponentCards)
+                Destroy(child.gameObject);
+
+            for (int i = 0; i < opponentCount; i++){
+                Instantiate(cardPrefab, opponentCards);
+            }
+        }
+        int opponentCardCount = opponentCards.childCount;
+            if (opponentCardCount!=0){
+                float spacing = Mathf.Min(0.3f,2.2f/(opponentCardCount));
+                float startX = -((opponentCardCount-1)*spacing)/2;
+                for(int i =0;i<opponentCardCount;i++){
+                    Transform cardTransform = opponentCards.GetChild(i);
+                    cardTransform.localPosition = new Vector3(startX+(i*spacing),0,0);
+                }
+            }
     }
 
 
@@ -504,7 +547,8 @@ public class GameManager : MonoBehaviour
 
     void Update()
     {
-
+        if (WebSocketManager.Instance.CardCounts != null)
+            UpdateOpponentHandUI(WebSocketManager.Instance.CardCounts);
 
         if (WebSocketManager.Instance.updateTopCard && !string.IsNullOrEmpty(WebSocketManager.Instance.topCard) && topCard != null)
         {

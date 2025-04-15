@@ -39,8 +39,8 @@ clientNamespace.on("connection", (socket) => {
     // console.log(socket);
     // console.log(messageQueue);
 
-    socket.on('createRoom', async (callback) => {
-        messageQueue.push({ socket, action: "createRoom", callback });
+    socket.on('createRoom', async (data, callback) => {
+        messageQueue.push({ socket, action: "createRoom", data, callback });
         processQueue();
 
     });
@@ -109,18 +109,17 @@ async function processQueue() {
     isProcessing = true; // lock queue processing
 
     while (messageQueue.length > 0) {
-        const { socket, action, data, callback } = messageQueue.shift(); // get the next message
+        const { socket, action, data, callback } = messageQueue.shift();
 
         console.log("Processing message:", action);
         if (action === 'createRoom') {
-            //const roomId = uuidV4();
-            const roomId = "Khevin's Room"
+            const roomId = data;
             const playerName = uuidV4();
             await socket.join(roomId);
             let reverse = false;
             let chosenColor = -1;
             rooms.set(roomId, {
-                roomId,
+                roomId:roomId,
                 players: [{ playerName, socketId: socket.id }], //[player1, player2,  player3]
                 reverse,// for when we need to reverse the order of player \
                 chosenColor,// for when you place a wildcard
@@ -137,13 +136,15 @@ async function processQueue() {
 
         if (action === 'joinRoom') {
             // check if room exists and has a player waiting
-            console.log(data); //data has the roomId
-            const room = rooms.get(data); 
+            //console.log(data); //data has the roomId
+            const roomId = data;
+            console.log("Requested room:", roomId);
+            const room = rooms.get(roomId); 
             console.log(room);
             const playerName = uuidV4();
             // add the joining user's data to the list of players in the room
             if (room && room.players.length < 2) {
-                await socket.join(data); // make the joining client join the room
+                await socket.join(roomId); // make the joining client join the room
                 const roomUpdate = {
                     ...room,
                     players: [
@@ -151,14 +152,11 @@ async function processQueue() {
                         { playerName, socketId: socket.id },
                     ],
                 };
-                rooms.set(data, roomUpdate);
+                rooms.set(roomId, roomUpdate);
                 if (callback) {
-                    callback(data, playerName);
+                    callback(roomId, playerName);
                 }
-                // console.log(socket.id)
-                // console.log(room.players)
-                // console.log("Room length " + room.players.length)
-                clientNamespace.to(data).emit("roomLength", rooms.get(data).players.length)
+                clientNamespace.to(roomId).emit("roomLength", rooms.get(roomId).players.length)
             }
             else {
                 if (callback) {
@@ -170,16 +168,21 @@ async function processQueue() {
         }
         if (action === 'drawCard') {
             handleDrawCard(socket, data);
+            broadcastCardCounts(data.roomId);
         } else if (action === 'sendDeck') {
             handleSendDeck(socket, data);
+            broadcastCardCounts(data.roomId);
         } else if (action === 'sendPlayerCards') {
             handleSendPlayerCards(socket, data);
+            broadcastCardCounts(data.roomId);
         } else if (action === 'sendTopCard') {
             handleTopCard(socket, data);
+            broadcastCardCounts(data.roomId);
         } else if (action === "wildcard"){
             handleWildCard(socket, data);
         } else if (action === "updateTurnAccess"){
             handleTurnAccess(socket, data);
+            broadcastCardCounts(data.roomId);
         }
 
 
@@ -228,6 +231,16 @@ function broadcastSnapshotToReplicas(){
     
 }
 
+function broadcastCardCounts(roomId){
+    let room = rooms.get(roomId);
+    if (!room || !room.playerHands) return;
+    //console.log("HI reached here")
+    let counts ={};
+    room.players.forEach(player => {
+        counts[player.playerName] = room.playerHands[player.playerName] ? room.playerHands[player.playerName].length : 0;
+        clientNamespace.to(roomId).emit("updateCardCounts", counts);
+    });
+}
 
 function handleWildCard(socket,data){
     const room = rooms.get(data.roomId);
@@ -257,9 +270,6 @@ function handleDrawCard(socket, data) {
     rooms.set(data.roomId, roomUpdate);
     socket.broadcast.to(data.roomId).emit('drawnCard', drawnCard);
     broadcastSnapshotToReplicas();
-
-
-
 }
 
 function handleTopCard(socket, data) {

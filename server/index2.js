@@ -322,11 +322,11 @@ const servers = [
 
 const links = new Map();
 
-links.set(3000, `http://localhost:3000/ring`); //change that here
-links.set(3001, `http://localhost:3001/ring`);
-links.set(3002, `http://localhost:3002/ring`);
-links.set(3003, `http://localhost:3003/ring`);
-links.set(3004, `http://localhost:3004/ring`);
+links.set(3000, `https://6891-2604-3d09-d82-1900-e9f7-bcd6-84c3-c5c2.ngrok-free.app/ring`); 
+links.set(3001, `https://9b1c-2604-3d09-d80-b600-95bd-4d33-51d1-a790.ngrok-free.app/ring`);
+links.set(3002, `https://7e67-2604-3d09-e7e-b800-2151-fb10-61f8-26ea.ngrok-free.app/ring`);
+links.set(3003, `https://49d4-174-0-240-161.ngrok-free.app/ring`);
+links.set(3004, `https://60eb-2604-3d09-d75-8900-a851-230b-2d6f-bf98.ngrok-free.app/ring`);
 
 
 //let's do some math here
