@@ -2,11 +2,17 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using UnityEngine.UI;
+using TMPro;
 
 public class Menu : MonoBehaviour
 {
 
     public GameObject waitPopup;
+    public GameObject createRoomPopup;
+    public GameObject joinRoomPopup;
+    public InputField createRoomInput; //when user sets room id while creating
+    public InputField joinRoomInput;//when user enters room id to join
 
     
 
@@ -28,33 +34,45 @@ public class Menu : MonoBehaviour
 
     void Update(){
         if(WebSocketManager.Instance.roomLength == 2){
-            waitPopup.SetActive(false); //players have joined
+            waitPopup.SetActive(false); //2 players have joined (can be changed later for 4)
             SceneManager.LoadScene("SampleScene");
         } 
     }   
 
-    public void playGame()
-    {
-        InitializeGame();
-        WebSocketManager.Instance.CreateRoom();
-        waitPopup.SetActive(true);
-        // Load the game scene after other players join **not done yet Done now
-        // SceneManager.LoadScene("SampleScene");
+    public void ShowCreateRoomPopup(){
+        createRoomPopup.SetActive(true);
+    }
+    public void ShowJoinRoomPopup(){
+        joinRoomPopup.SetActive(true);
     }
 
-    public void closePopup()
-    {
-        //waitPopup.SetActive(false);
-        
+    public void CreateRoom(){
+        string roomID = createRoomInput.text;
+        if(!string.IsNullOrEmpty(roomID)){
+            InitializeGame();
+            WebSocketManager.Instance.CreateRoom(roomID);
+            createRoomPopup.SetActive(false);
+            waitPopup.SetActive(true);
+        }
+
+        //InitializeGame();
     }
 
-    // think of this as join
-    public void quitGame()
-    {
-        InitializeGame();
-        WebSocketManager.Instance.JoinRoom();
-        waitPopup.SetActive(true);
-        // Application.Quit();
-        //Debug.Log("quit game");
+    public void JoinRoom(){
+        string roomID = joinRoomInput.text;
+        if(!string.IsNullOrEmpty(roomID)){
+            InitializeGame();
+            WebSocketManager.Instance.JoinRoom(roomID);
+            joinRoomPopup.SetActive(false);
+            waitPopup.SetActive(true);
+        }
+        //InitializeGame();
+    }
+
+    public void closeCreateRoomPopup(){
+        createRoomPopup.SetActive(false);
+    }
+    public void closeJoinRoomPopup(){
+        joinRoomPopup.SetActive(false);
     }
 }

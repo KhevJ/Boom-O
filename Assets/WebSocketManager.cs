@@ -50,7 +50,8 @@ public class WebSocketManager : MonoBehaviour
    
     private int currentServerId = 4;
 
-    
+    public Dictionary<string,int> CardCounts;
+    //public event Action<Dictionary<string, int>> OnCardCountsUpdated;
 
     void Awake()
     {
@@ -213,6 +214,11 @@ public class WebSocketManager : MonoBehaviour
             Debug.Log("Hi from allowedTurn");
         });
 
+        socket.On("updateCardCounts", (response) =>{
+            CardCounts = response.GetValue<Dictionary<string, int>>();
+            Debug.Log("Received updated card counts");
+            //OnCardCountsUpdated?.Invoke(CardCounts);
+        });
 
         socket.Connect();
 
@@ -255,7 +261,7 @@ public class WebSocketManager : MonoBehaviour
         }
     }
 
-    public async void CreateRoom()
+    public async void CreateRoom(string roomID)
     {
         await socket.EmitAsync("createRoom", response =>
         {
@@ -266,19 +272,19 @@ public class WebSocketManager : MonoBehaviour
                 Debug.Log("player Name " + playerName);
                 host = true;
                 Debug.Log("Room created with ID: " + roomId);
-                Debug.Log("Room created with ID: " + roomLength);
+                //Debug.Log("Room created with ID: " + roomLength);
             }
             else
             {
                 Debug.LogWarning("No roomId received from server!");
 
             }
-        });
+        },roomID);
     }
 
     
 
-    public async void JoinRoom(string room = "Khevin's Room")
+    public async void JoinRoom(string roomID)
     {
 
         await socket.EmitAsync("joinRoom", response =>
@@ -288,16 +294,14 @@ public class WebSocketManager : MonoBehaviour
                 roomId = response.GetValue<string>();
                 playerName = response.GetValue<string>(1);
                 Debug.Log("player Name " + playerName);
-                if (roomId == "Error") Application.Quit();
-
-                Debug.Log("Room joined with ID from join: " + roomId);
+                Debug.Log("Room joined with ID: " + roomId);
             }
             else
             {
                 Debug.LogWarning("No roomId received from server!");
 
             }
-        }, room);
+        }, roomID);
     }
 
 
