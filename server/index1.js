@@ -52,7 +52,7 @@ clientNamespace.on("connection", (socket) => {
         const player = roomData.players.find(p => p.playerName === data.playerName);
         if (player) {
             player.socketId = socket.id;
-            await socket.join(data);
+            await socket.join(data.roomId);
             console.log(`Updated socketId for ${data.playerName} in room ${data.roomId}`);
             
         } else {
@@ -367,9 +367,9 @@ function handleTurnAccess(socket, data) {
     else nextIndex = curr_player + 1;
 
     // console.log("index: ", nextIndex)
-    console.log(rooms)
-    console.log(room.players)
-    console.log(socket.id)
+    // console.log(rooms)
+    // console.log(room.players)
+    // console.log(socket.id)
 
     clientNamespace.to(room.players[nextIndex].socketId).emit("allowedTurn", "yourturn");
 }
