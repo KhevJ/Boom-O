@@ -47,10 +47,10 @@ public class WebSocketManager : MonoBehaviour
         { 0, "http://localhost:3004/client" }
     };
 
-   
+
     private int currentServerId = 4;
 
-    
+
 
     void Awake()
     {
@@ -79,7 +79,7 @@ public class WebSocketManager : MonoBehaviour
             Query = new Dictionary<string, string>
                 {
                     {"token", "UNITY" },
-                    { "playerName", "Player" }
+                    { "playerName", "Player"}
                 },
             EIO = 4,
             Transport = SocketIOClient.Transport.TransportProtocol.WebSocket
@@ -94,6 +94,7 @@ public class WebSocketManager : MonoBehaviour
         {
             connected = true;
             Debug.Log("socket.OnConnected" + e);
+
         };
         socket.OnPing += (sender, e) =>
         {
@@ -135,8 +136,17 @@ public class WebSocketManager : MonoBehaviour
         // we can't talk to anyone
 
         {
-            int serverIdFromServer = response.GetValue<int>();
+            Debug.Log("in welcome");
+            var data = new Dictionary<string, object>
+                {
+                    { "roomId", roomId },
+                    { "playerName", playerName }
+                };
+            Debug.Log("woo" + data);
+            WelcomeBack(data); 
             
+            int serverIdFromServer = response.GetValue<int>();
+
             if (currentServerId == -1)
             {
                 currentServerId = serverIdFromServer;
@@ -144,15 +154,17 @@ public class WebSocketManager : MonoBehaviour
             else
             {
                 // If the welcome event returns a different id, update the current server id.
-
-               if (currentServerId != serverIdFromServer)
-               {
+                
+                if (currentServerId != serverIdFromServer)
+                {
                     SwapServer();
 
-               }
+                }
+                //this will update socket id in backend
 
             }
             // Log the welcome message.
+
             Debug.Log("Switched to new leader. Server id from welcome: " + currentServerId);
         });
 
@@ -202,13 +214,15 @@ public class WebSocketManager : MonoBehaviour
         });
 
 
-        socket.On("wildcardColor", (response) => {
+        socket.On("wildcardColor", (response) =>
+        {
             wildcardColor = response.GetValue<int>();
             wildcardPlaced = true;
             Debug.Log(wildcardColor);
         });
 
-        socket.On("allowedTurn", (response) => {
+        socket.On("allowedTurn", (response) =>
+        {
             allowedTurn = true;
             Debug.Log("Hi from allowedTurn");
         });
@@ -216,7 +230,7 @@ public class WebSocketManager : MonoBehaviour
 
         socket.Connect();
 
-        
+
     }
 
     private void SwapServer()
@@ -226,7 +240,9 @@ public class WebSocketManager : MonoBehaviour
         {
             Debug.Log("Switching server from id " + currentServerId + " to " + nextServerId + " at URL: " + nextUrl);
             currentServerId = nextServerId;
+            
             InitializeSocketIO(nextUrl);
+            
         }
         else
         {
@@ -276,7 +292,25 @@ public class WebSocketManager : MonoBehaviour
         });
     }
 
-    
+    public async void WelcomeBack(object data)
+    {
+        Debug.Log("In welcome back");
+        await socket.EmitAsync("welcomeBack", response =>
+        {
+            if (response.Count > 0)
+            {
+                
+                
+            }
+            else
+            {
+                Debug.LogWarning("No roomId received from server!");
+
+            }
+        }, data);
+    }
+
+
 
     public async void JoinRoom(string room = "Khevin's Room")
     {

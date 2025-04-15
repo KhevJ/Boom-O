@@ -32,12 +32,36 @@ let rooms = new Map();// will store all rooms
 
 clientNamespace.on("connection", (socket) => {
     console.log("A user connected");
-    // const playerName = socket.handshake.query.playerName || "Unknown Player";
+    //const playerName = socket.handshake.query.playerName;
+
+
     // console.log(`Player Connected: ${playerName}`);
 
     socket.emit("welcome", { serverIdFromServer: currentLeader }); //add running
     // console.log(socket);
     // console.log(messageQueue);
+
+    socket.on("welcomeBack",  async (data, callback) => {
+        console.log("We are here")
+        const roomData = rooms.get(data.roomId);
+        if (!roomData) {
+            console.log(`Room ${data.roomId} not found.`);
+            
+        }
+
+        const player = roomData.players.find(p => p.playerName === data.playerName);
+        if (player) {
+            player.socketId = socket.id;
+            await socket.join(data);
+            console.log(`Updated socketId for ${data.playerName} in room ${data.roomId}`);
+            
+        } else {
+            console.log(`Player ${data.playerName} not found in room ${data.roomId}`);
+            
+        }
+        callback(data.roomId);
+
+    })
 
     socket.on('createRoom', async (callback) => {
         messageQueue.push({ socket, action: "createRoom", callback });
@@ -138,7 +162,7 @@ async function processQueue() {
         if (action === 'joinRoom') {
             // check if room exists and has a player waiting
             console.log(data); //data has the roomId
-            const room = rooms.get(data); 
+            const room = rooms.get(data);
             console.log(room);
             const playerName = uuidV4();
             // add the joining user's data to the list of players in the room
@@ -176,9 +200,9 @@ async function processQueue() {
             handleSendPlayerCards(socket, data);
         } else if (action === 'sendTopCard') {
             handleTopCard(socket, data);
-        } else if (action === "wildcard"){
+        } else if (action === "wildcard") {
             handleWildCard(socket, data);
-        } else if (action === "updateTurnAccess"){
+        } else if (action === "updateTurnAccess") {
             handleTurnAccess(socket, data);
         }
 
@@ -189,6 +213,7 @@ async function processQueue() {
 }
 // let snapshotActive = false;
 let snapshotState = null;
+let TOBtimestamp = 0;
 
 
 function captureSnapshotState() {
@@ -203,41 +228,33 @@ function captureSnapshotState() {
             players: room.players,
             reverse: room.reverse
         };
-        // allRooms.push({
-        //     roomId: room.roomId,
-        //     topCard: room.topCard,
-        //     deck: room.deck,
-        //     playerHands: room.playerHands,
-        //     chosenColor: room.chosenColor,
-        //     players: room.players,
-        //     reverse: room.reverse
-        // })
     });
-    return {id: myId,leader: currentLeader,rooms: allRooms};
+    return { id: myId, leader: currentLeader, rooms: allRooms };
 }
 
 
 
-function broadcastSnapshotToReplicas(){
-    if(myId!==currentLeader) return;
+function broadcastSnapshotToReplicas() {
+    if (myId !== currentLeader) return;
     snapshotState = captureSnapshotState();
-    console.log(`Broadcasting snapshot from Leader server ${myId}`)
-    console.log(JSON.stringify(snapshotState,null,2))
-    for(let[port,link] of links){
-        if(port!=3000){
-            const ioClient = require("socket.io-client")
-            const peerSocket = ioClient(link, { transports: ["websocket"] });
-            peerSocket.on("connect", () => {
-                peerSocket.emit("REPLICA_SNAPSHOT", snapshotState);
-                peerSocket.disconnect();
-            });
-        }
+    snapshotState["timestamp"] = TOBtimestamp++;
+    // console.log(`Broadcasting snapshot from Leader server ${myId}`)
+    // console.log(JSON.stringify(snapshotState,null,2))
+    for (let [port, link] of links) {
+
+        const ioClient = require("socket.io-client")
+        const peerSocket = ioClient(link, { transports: ["websocket"] });
+        peerSocket.on("connect", () => {
+            peerSocket.emit("REPLICA_SNAPSHOT", snapshotState);
+            peerSocket.disconnect();
+        });
     }
-    
 }
 
 
-function handleWildCard(socket,data){
+
+
+function handleWildCard(socket, data) {
     const room = rooms.get(data.roomId);
     // console.log(room);
     const roomUpdate = {
@@ -253,9 +270,9 @@ function handleWildCard(socket,data){
 function handleDrawCard(socket, data) {
     console.log("Received drawn card:", data);
     const room = rooms.get(data.roomId);
-    console.log(room);
+    // console.log(room);
     const drawnCard = room.deck.shift();
-    console.log(drawnCard);
+    // console.log(drawnCard);
     room.playerHands[data.playerName].push(drawnCard);
     const roomUpdate = {
         ...room,
@@ -265,9 +282,6 @@ function handleDrawCard(socket, data) {
     rooms.set(data.roomId, roomUpdate);
     socket.broadcast.to(data.roomId).emit('drawnCard', drawnCard);
     broadcastSnapshotToReplicas();
-
-
-
 }
 
 function handleTopCard(socket, data) {
@@ -298,7 +312,7 @@ function handleTopCard(socket, data) {
 
     rooms.set(data.roomId, roomUpdate);
 
-    // console.log(rooms.get(data.roomId));
+    console.log(rooms.get(data.roomId));
     socket.broadcast.to(data.roomId).emit('topCardUpdate', data.topCard);
     broadcastSnapshotToReplicas();
 
@@ -308,7 +322,7 @@ function handleSendDeck(socket, data) {
     console.log("Received deck:", data);
     const room = rooms.get(data.roomId);
     let deck = [...data.deck];
-    // gameObjects["deck"] = deck; //! delete this later this is just for testing drawing when drawing is not fully implemented
+
     const playerHands = {};
 
     for (const player of room.players) { //player here is the socket
@@ -327,34 +341,37 @@ function handleSendDeck(socket, data) {
     for (const player of room.players) {
         // here has to be sockets id
         clientNamespace.to(player.socketId).emit("playerCardsSaved", playerHands[player.playerName]); //find player which has playerId =="Name"  player.socketID
-        
+
     }
-    // ! should be broacast to everyone except the host Done Brother
+
     clientNamespace.to(data.roomId).emit("deckSaved", deck) //send deck to everyone
-    clientNamespace.to(room.players[0].socketId).emit("allowedTurn", "yourturn"); 
+    clientNamespace.to(room.players[0].socketId).emit("allowedTurn", "yourturn");
     broadcastSnapshotToReplicas();
 }
 
-function handleSendPlayerCards(socket, data) {
-    console.log("Received deck:", data);
-    // gameObjects["playerHand"] = data;
-    socket.emit('playerCardsSaved', "Server said why play UNO when Yugioh exists");
-    broadcastSnapshotToReplicas();
-}
+// function handleSendPlayerCards(socket, data) {
+//     console.log("Received deck:", data);
+//     // gameObjects["playerHand"] = data;
+//     socket.emit('playerCardsSaved', "Server said why play UNO when Yugioh exists");
+//     broadcastSnapshotToReplicas();
+// }
 
 function handleTurnAccess(socket, data) {
     console.log(data);
     const room = rooms.get(data.roomId);
-    const curr_player=room.players.findIndex((player)=>player.playerName==data.playerName);
+    const curr_player = room.players.findIndex((player) => player.playerName == data.playerName);
     console.log(curr_player);
     const len = room.players.length;
     let nextIndex;
-    if(curr_player === len -1) nextIndex = 0;
+    if (curr_player === len - 1) nextIndex = 0;
     else nextIndex = curr_player + 1;
-    
+
     // console.log("index: ", nextIndex)
-    
-    clientNamespace.to(room.players[nextIndex].socketId).emit("allowedTurn", "yourturn"); 
+    console.log(rooms)
+    console.log(room.players)
+    console.log(socket.id)
+
+    clientNamespace.to(room.players[nextIndex].socketId).emit("allowedTurn", "yourturn");
 }
 
 
@@ -372,7 +389,7 @@ const servers = [
 
 const links = new Map();
 
-links.set(3000, `http://localhost:3000/ring`); 
+links.set(3000, `http://localhost:3000/ring`);
 links.set(3001, `http://localhost:3001/ring`);
 links.set(3002, `http://localhost:3002/ring`);
 links.set(3003, `http://localhost:3003/ring`);
@@ -428,28 +445,45 @@ ringNamespace.on("connection", (socket) => {
     });
 
     socket.on("REPLICA_SNAPSHOT", (state) => {
-        //tob stuff here
-        console.log(`Server ${myId} received replicated snapshot from Leader`);
-        console.log(JSON.stringify(state, null, 2));
+
+
+        // console.log(`Server ${myId} received replicated snapshot from Leader`);
+        // console.log(JSON.stringify(state, null, 2));
         snapshotState = state; // update local state from leader
-        console.log("the snapshot" ,snapshotState);
+
+
+        if (snapshotState.timestamp <= TOBtimestamp) return
+        TOBtimestamp = snapshotState.timestamp;
+        for (let [port, link] of links) {
+
+            const ioClient = require("socket.io-client")
+            const peerSocket = ioClient(link, { transports: ["websocket"] });
+            peerSocket.on("connect", () => {
+                peerSocket.emit("REPLICA_SNAPSHOT", snapshotState);
+                peerSocket.disconnect();
+            });
+        }
+
+
+        //console.log("the snapshot", snapshotState);
 
         const new_rooms = new Map();
         Object.values(snapshotState.rooms).forEach(room => {
-            new_rooms.set(room, {
+            new_rooms.set(room.roomId, {
                 roomId: room.roomId,
                 players: room.players, //[player1, player2,  player3]
                 reverse: room.reverse,// for when we need to reverse the order of player \
                 chosenColor: room.chosenColor,// for when you place a wildcard
                 playerHands: room.playerHands, //hands of all players
                 deck: room.deck, // deck of game
-                topCard: room.players, //current top card of game
-            })});
-        
+                topCard: room.topCard, //current top card of game
+            })
+        });
+
 
 
         rooms = new_rooms;
-        console.log(new_rooms)
+        // console.log(new_rooms)
 
     });
 
@@ -465,7 +499,10 @@ ringNamespace.on("connection", (socket) => {
         console.log(`Server ${myId} acknowledges Leader ${data.leader}`);
         currentLeader = data.leader;
         running = false;
-        if (data.leader === myId) return;
+        if (data.leader === myId) {
+           // processQueue();
+            return;
+        }
         ringSocket.emit("LEADER", { leader: data.leader });
     });
 
@@ -573,7 +610,7 @@ ringSocket.on("connect", () => {
 });
 
 ringSocket.on("disconnect", () => {
-    
+
     const server = servers.find(s => s.id === myId);
 
     if (server.nextId == currentLeader) {

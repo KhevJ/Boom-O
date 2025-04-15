@@ -189,6 +189,7 @@ async function processQueue() {
 }
 // let snapshotActive = false;
 let snapshotState = null;
+let TOBtimestamp = 0;
 
 
 function captureSnapshotState() {
@@ -209,22 +210,22 @@ function captureSnapshotState() {
 
 
 
-function broadcastSnapshotToReplicas(){
-    if(myId!==currentLeader) return;
+
+function broadcastSnapshotToReplicas() {
+    if (myId !== currentLeader) return;
     snapshotState = captureSnapshotState();
-    console.log(`Broadcasting snapshot from Leader server ${myId}`)
-    console.log(JSON.stringify(snapshotState,null,2))
-    for(let[port,link] of links){
-        if(port!=3000){
-            const ioClient = require("socket.io-client")
-            const peerSocket = ioClient(link, { transports: ["websocket"] });
-            peerSocket.on("connect", () => {
-                peerSocket.emit("REPLICA_SNAPSHOT", snapshotState);
-                peerSocket.disconnect();
-            });
-        }
+    snapshotState["timestamp"] = TOBtimestamp++;
+    // console.log(`Broadcasting snapshot from Leader server ${myId}`)
+    // console.log(JSON.stringify(snapshotState,null,2))
+    for (let [port, link] of links) {
+
+        const ioClient = require("socket.io-client")
+        const peerSocket = ioClient(link, { transports: ["websocket"] });
+        peerSocket.on("connect", () => {
+            peerSocket.emit("REPLICA_SNAPSHOT", snapshotState);
+            peerSocket.disconnect();
+        });
     }
-    
 }
 
 
@@ -419,11 +420,45 @@ ringNamespace.on("connection", (socket) => {
     });
 
     socket.on("REPLICA_SNAPSHOT", (state) => {
-        //tob stuff here
-        console.log(`Server ${myId} received replicated snapshot from Leader`);
-        console.log(JSON.stringify(state, null, 2));
+        
+
+        // console.log(`Server ${myId} received replicated snapshot from Leader`);
+        // console.log(JSON.stringify(state, null, 2));
         snapshotState = state; // update local state from leader
-        console.log("the snapshot" ,snapshotState);
+
+
+        if (snapshotState.timestamp <= TOBtimestamp) return
+        TOBtimestamp = snapshotState.timestamp;
+        for (let [port, link] of links) {
+
+            const ioClient = require("socket.io-client")
+            const peerSocket = ioClient(link, { transports: ["websocket"] });
+            peerSocket.on("connect", () => {
+                peerSocket.emit("REPLICA_SNAPSHOT", snapshotState);
+                peerSocket.disconnect();
+            });
+        }
+
+
+        console.log("the snapshot", snapshotState);
+
+        const new_rooms = new Map();
+        Object.values(snapshotState.rooms).forEach(room => {
+            new_rooms.set(room.roomId, {
+                roomId: room.roomId,
+                players: room.players, //[player1, player2,  player3]
+                reverse: room.reverse,// for when we need to reverse the order of player \
+                chosenColor: room.chosenColor,// for when you place a wildcard
+                playerHands: room.playerHands, //hands of all players
+                deck: room.deck, // deck of game
+                topCard: room.topCard, //current top card of game
+            })
+        });
+
+
+
+        rooms = new_rooms;
+        console.log(new_rooms)
 
     });
 
@@ -439,7 +474,10 @@ ringNamespace.on("connection", (socket) => {
         console.log(`Server ${myId} acknowledges Leader ${data.leader}`);
         currentLeader = data.leader;
         running = false;
-        if (data.leader === myId) return;
+        if (data.leader === myId){
+            processQueue();
+            return;
+        }
         ringSocket.emit("LEADER", { leader: data.leader });
     });
 

@@ -95,46 +95,12 @@ public class GameManager : MonoBehaviour
 
 
         }
-        // GameObject card = null;
-        // int j = 0;
-        // foreach (var pair in UNODeckList)
-        // {
-        //     if (pair.Key == "Red_0")
-        //     {
-
-        //         card= pair.Value;
-        //         Debug.Log("j=" + j);
-
-        //         break;
-        //     }
-        //     j++;
-        // }
-        // Debug.Log(UNODeckList[j].Value.GetComponent<Card>().number);
+        
         Debug.Log("Before play cards" + UNODeckList.Count);
         ConvertStringToPlayerCards(WebSocketManager.Instance.playerCards);
         Debug.Log("After play cards" + UNODeckList.Count);
         ConvertStringToDeckCards(WebSocketManager.Instance.deck);
         Debug.Log("After deck" + UNODeckList.Count);
-
-
-
-
-
-
-
-
-
-        // UpdateDrawPile();
-        // UpdatePlayerCard();
-
-        // DealCards();
-        // host sends top card and shuffled deck
-
-        // Deal Cards() include sending top card to server
-
-        // SendDeck(); // should be when first client joins
-        // find a way to set deck when other clients join
-        // SendPlayerCards();
     }
 
     public void TestButton()
@@ -522,10 +488,6 @@ public class GameManager : MonoBehaviour
             // oh I see I can add to UNODeckList whenever other player draws yeah that solves a lot
             // am I missing something
             // drawing , placing should be taken care of by this strat 
-            // oh i am missing how to rebuild everyhtin when server goes down
-            // yeah replication is gonna be wild
-            // ok let's just try to make it work
-            // need to sleep I do not want to sleep at 8 am again
             GameObject cardObject = null;
             int i = 0;
             foreach (var pair in UNODeckList)

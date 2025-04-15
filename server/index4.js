@@ -25,19 +25,41 @@ clientNamespace.use((socket, next) => {
 });
 
 
-
+// const gameObjects = {}; // store game state
 const messageQueue = []; // queue to process messages in order
-let isProcessing = false; //this is the lock
-const rooms = new Map();// will store all rooms
+let isProcessing = false;
+let rooms = new Map();// will store all rooms
 
 clientNamespace.on("connection", (socket) => {
     console.log("A user connected");
-    // const playerName = socket.handshake.query.playerName || "Unknown Player";
+    //const playerName = socket.handshake.query.playerName;
+
+
     // console.log(`Player Connected: ${playerName}`);
 
     socket.emit("welcome", { serverIdFromServer: currentLeader }); //add running
     // console.log(socket);
     // console.log(messageQueue);
+
+    socket.on("welcomeBack", async (data) => {
+        const roomData = rooms.get(data.roomId);
+        if (!roomData) {
+            console.log(`Room ${data.roomId} not found.`);
+            
+        }
+
+        const player = roomData.players.find(p => p.playerName === data.playerName);
+        if (player) {
+            player.socketId = socket.id;
+            await socket.join(data);
+            console.log(`Updated socketId for ${playerName} in room ${data.roomId}`);
+            
+        } else {
+            console.log(`Player ${playerName} not found in room ${data.roomId}`);
+            
+        }
+
+    })
 
     socket.on('createRoom', async (callback) => {
         messageQueue.push({ socket, action: "createRoom", callback });
@@ -118,13 +140,15 @@ async function processQueue() {
             const playerName = uuidV4();
             await socket.join(roomId);
             let reverse = false;
-            let chosenColor = -1
+            let chosenColor = -1;
             rooms.set(roomId, {
                 roomId,
                 players: [{ playerName, socketId: socket.id }], //[player1, player2,  player3]
                 reverse,// for when we need to reverse the order of player \
-                chosenColor
-                // did you know yugioh is the best turn based game
+                chosenColor,// for when you place a wildcard
+                playerHands: undefined, //hands of all players
+                deck: undefined, // deck of game
+                topCard: undefined, //current top card of game
             });
 
             console.log(`Room created: ${roomId}`);
@@ -136,7 +160,7 @@ async function processQueue() {
         if (action === 'joinRoom') {
             // check if room exists and has a player waiting
             console.log(data); //data has the roomId
-            const room = rooms.get(data); 
+            const room = rooms.get(data);
             console.log(room);
             const playerName = uuidV4();
             // add the joining user's data to the list of players in the room
@@ -174,9 +198,9 @@ async function processQueue() {
             handleSendPlayerCards(socket, data);
         } else if (action === 'sendTopCard') {
             handleTopCard(socket, data);
-        } else if (action === "wildcard"){
+        } else if (action === "wildcard") {
             handleWildCard(socket, data);
-        } else if (action === "updateTurnAccess"){
+        } else if (action === "updateTurnAccess") {
             handleTurnAccess(socket, data);
         }
 
@@ -185,8 +209,50 @@ async function processQueue() {
 
     isProcessing = false; // unlock queue processing
 }
+// let snapshotActive = false;
+let snapshotState = null;
+let TOBtimestamp = 0;
 
-function handleWildCard(socket,data){
+
+function captureSnapshotState() {
+    const allRooms = [];
+    rooms.forEach((room, roomId) => {
+        allRooms[roomId] = {
+            roomId: room.roomId,
+            topCard: room.topCard,
+            deck: room.deck,
+            playerHands: room.playerHands,
+            chosenColor: room.chosenColor,
+            players: room.players,
+            reverse: room.reverse
+        };
+    });
+    return { id: myId, leader: currentLeader, rooms: allRooms };
+}
+
+
+
+function broadcastSnapshotToReplicas() {
+    if (myId !== currentLeader) return;
+    snapshotState = captureSnapshotState();
+    snapshotState["timestamp"] = TOBtimestamp++;
+    // console.log(`Broadcasting snapshot from Leader server ${myId}`)
+    // console.log(JSON.stringify(snapshotState,null,2))
+    for (let [port, link] of links) {
+
+        const ioClient = require("socket.io-client")
+        const peerSocket = ioClient(link, { transports: ["websocket"] });
+        peerSocket.on("connect", () => {
+            peerSocket.emit("REPLICA_SNAPSHOT", snapshotState);
+            peerSocket.disconnect();
+        });
+    }
+}
+
+
+
+
+function handleWildCard(socket, data) {
     const room = rooms.get(data.roomId);
     // console.log(room);
     const roomUpdate = {
@@ -202,9 +268,9 @@ function handleWildCard(socket,data){
 function handleDrawCard(socket, data) {
     console.log("Received drawn card:", data);
     const room = rooms.get(data.roomId);
-    console.log(room);
+    // console.log(room);
     const drawnCard = room.deck.shift();
-    console.log(drawnCard);
+    // console.log(drawnCard);
     room.playerHands[data.playerName].push(drawnCard);
     const roomUpdate = {
         ...room,
@@ -212,12 +278,9 @@ function handleDrawCard(socket, data) {
         deck: room.deck
     };
     rooms.set(data.roomId, roomUpdate);
-    socket.broadcast.to(data.roomId).emit('drawnCard', drawnCard); //send to everyone except the client triggering
-    broadcastSnapshotToReplicas();
-
-
+    socket.broadcast.to(data.roomId).emit('drawnCard', drawnCard);
+    //broadcastSnapshotToReplicas();
 }
-
 
 function handleTopCard(socket, data) {
     console.log(" top card:", data);
@@ -247,7 +310,7 @@ function handleTopCard(socket, data) {
 
     rooms.set(data.roomId, roomUpdate);
 
-    // console.log(rooms.get(data.roomId));
+    console.log(rooms.get(data.roomId));
     socket.broadcast.to(data.roomId).emit('topCardUpdate', data.topCard);
     broadcastSnapshotToReplicas();
 
@@ -267,7 +330,7 @@ function handleSendDeck(socket, data) {
     const roomUpdate = {
         ...room,
         deck: deck,
-        playerHands: playerHands //  hands of all player
+        playerHands: playerHands
     };
     rooms.set(data.roomId, roomUpdate);
 
@@ -276,32 +339,37 @@ function handleSendDeck(socket, data) {
     for (const player of room.players) {
         // here has to be sockets id
         clientNamespace.to(player.socketId).emit("playerCardsSaved", playerHands[player.playerName]); //find player which has playerId =="Name"  player.socketID
-        
+
     }
-    // ! should be broacast to everyone except the host Done Brother
+
     clientNamespace.to(data.roomId).emit("deckSaved", deck) //send deck to everyone
+    clientNamespace.to(room.players[0].socketId).emit("allowedTurn", "yourturn");
     broadcastSnapshotToReplicas();
 }
 
 // function handleSendPlayerCards(socket, data) {
 //     console.log("Received deck:", data);
-   
+//     // gameObjects["playerHand"] = data;
+//     socket.emit('playerCardsSaved', "Server said why play UNO when Yugioh exists");
+//     broadcastSnapshotToReplicas();
 // }
 
-// function handleSendDeck(socket, data) {
-//     console.log(data);
-//     const room = rooms.get(data.roomId);
-//     curr_player=room.players.findIndex((player)=>player.playerName==data.playerName);
-//     console.log(curr_player);
-//     const len = room.players.length;
-//     if (curr_player == len){
-        
-//     }
+function handleTurnAccess(socket, data) {
+    console.log(data);
+    const room = rooms.get(data.roomId);
+    const curr_player = room.players.findIndex((player) => player.playerName == data.playerName);
+    console.log(curr_player);
+    const len = room.players.length;
+    let nextIndex;
+    if (curr_player === len - 1) nextIndex = 0;
+    else nextIndex = curr_player + 1;
 
-// }
+    console.log("index: ", players[nextIndex])
+
+    clientNamespace.to(room.players[nextIndex].socketId).emit("allowedTurn", "yourturn");
+}
 
 
-// here ring algo starts
 
 const ringNamespace = io.of("/ring");
 
@@ -316,19 +384,22 @@ const servers = [
 
 const links = new Map();
 
-links.set(3000, `http://localhost:3000/ring`); //change that here
+links.set(3000, `http://localhost:3000/ring`);
 links.set(3001, `http://localhost:3001/ring`);
 links.set(3002, `http://localhost:3002/ring`);
 links.set(3003, `http://localhost:3003/ring`);
 links.set(3004, `http://localhost:3004/ring`);
 
-//let's do some math here
-// 4-> 3 -> 2 -> 1 -> 4
-// for next id  -> (id - 1 + 4) % 4 || 4
-// for next port -> ((3001-3003) + 1)%3 + 3000 so next port = ((port - 3003) + 1)%3 +3000
+//let's improve some math here
+// wanted to use modulo but this does work
+// man use modulo
+//  0 -> 4 -> 3 -> 2 -> 1 -> 0 -> 4
+// for next id  -> (id === 0) ? 4 : id - 1 
+// for next port -> (port === 3004) ? 3000 : port + 1
 
 const myId = 0;
 const myNext = servers.find(s => s.id === myId).next; //next port
+
 
 let currentLeader = 4;
 let running = false;
@@ -369,10 +440,49 @@ ringNamespace.on("connection", (socket) => {
     });
 
     socket.on("REPLICA_SNAPSHOT", (state) => {
-        console.log(`Server ${myId} received replicated snapshot from Leader`);
-        console.log(JSON.stringify(state, null, 2));
+
+
+        // console.log(`Server ${myId} received replicated snapshot from Leader`);
+        // console.log(JSON.stringify(state, null, 2));
         snapshotState = state; // update local state from leader
+
+
+        if (snapshotState.timestamp <= TOBtimestamp) return
+        TOBtimestamp = snapshotState.timestamp;
+        for (let [port, link] of links) {
+
+            const ioClient = require("socket.io-client")
+            const peerSocket = ioClient(link, { transports: ["websocket"] });
+            peerSocket.on("connect", () => {
+                peerSocket.emit("REPLICA_SNAPSHOT", snapshotState);
+                peerSocket.disconnect();
+            });
+        }
+
+
+        //console.log("the snapshot", snapshotState);
+
+        const new_rooms = new Map();
+        Object.values(snapshotState.rooms).forEach(room => {
+            new_rooms.set(room.roomId, {
+                roomId: room.roomId,
+                players: room.players, //[player1, player2,  player3]
+                reverse: room.reverse,// for when we need to reverse the order of player \
+                chosenColor: room.chosenColor,// for when you place a wildcard
+                playerHands: room.playerHands, //hands of all players
+                deck: room.deck, // deck of game
+                topCard: room.topCard, //current top card of game
+            })
+        });
+
+
+
+        rooms = new_rooms;
+        // console.log(new_rooms)
+
     });
+
+
     // Case message is leader(k):
     // leader message reception
     // leaderi = k
@@ -384,7 +494,10 @@ ringNamespace.on("connection", (socket) => {
         console.log(`Server ${myId} acknowledges Leader ${data.leader}`);
         currentLeader = data.leader;
         running = false;
-        if (data.leader === myId) return;
+        if (data.leader === myId) {
+           // processQueue();
+            return;
+        }
         ringSocket.emit("LEADER", { leader: data.leader });
     });
 
@@ -492,12 +605,12 @@ ringSocket.on("connect", () => {
 });
 
 ringSocket.on("disconnect", () => {
-    
+
     const server = servers.find(s => s.id === myId);
 
     if (server.nextId == currentLeader) {
         server.next = (server.next === 3004) ? 3000 : server.next + 1; //update port  //(port === 3004) ? 3000 : port + 1
-        server.nextId = (server.nextId === 0) ? 4 : server.nextId - 1; 
+        server.nextId = (server.nextId === 0) ? 4 : server.nextId - 1; //update nextId //(id === 0) ? 4 : id - 1 
 
         const oldSocket = ringSocket;
         //start new connection with the next server, ignoring crashed ones
