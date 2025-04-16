@@ -2,22 +2,28 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
+//property that each card will have
+// basically to allow them to be moved around 
+// for e.g drawing or placing cards on the table
 public class DragDrop : MonoBehaviour
 {
 
-    private Vector3 startposition;
-    public Transform discardPile;
-    public GameManager gameManager;
+    private Vector3 startposition; // startposition of the card , to know where the card is initially at
+    public Transform discardPile; // where the cards are placed on the table
+    public GameManager gameManager; // the one that handles the games 
 
-    // int order = 0; //commented this thing out to suppress warnings
 
+    // unity function that will run when the DragDrop property is instantiated in each card
     void Start()
     {
         discardPile = GameObject.Find("DiscardPile").transform;
         gameManager = FindObjectOfType<GameManager>();
         startposition = transform.position;
     }
+        
 
+    // for clicking on cards for example in deck and in player hand
+    // basically when you press on the mouse button
     private void OnMouseDown()
     {
         if (transform.parent.name == "PlayerCards")
@@ -32,6 +38,7 @@ public class DragDrop : MonoBehaviour
 
     }
 
+    // when you drag a card from player cards to discard pile
     private void OnMouseDrag()
     {
         if (transform.parent.name == "PlayerCards")
@@ -40,6 +47,7 @@ public class DragDrop : MonoBehaviour
         }
     }
 
+    // to releases cards from player hands to the discard pile
     private void OnMouseUp()
     {
         if (transform.parent.name == "PlayerCards")
@@ -97,6 +105,8 @@ public class DragDrop : MonoBehaviour
 
     }
 
+    // to calculate the mouse position used for updating top card position when dragging the card
+    // from player hands
     public Vector3 GetMousePositionInWorldSpace()
     {
         Vector3 position = Camera.main.ScreenToWorldPoint(Input.mousePosition);

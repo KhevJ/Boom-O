@@ -2,11 +2,15 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
+// class for a card object
 public class Card : MonoBehaviour
 {
+    //enums to make sure card attributes are valid
     public enum CardColor { Red, Blue, Green, Yellow, Wild }
     public enum CardType { Number, Skip, Reverse, Draw, Wild, WildDraw }
 
+
+    // card attributes
     public CardColor color;
     public CardType type;
     public int number; // Only relevant for number cards
@@ -19,6 +23,8 @@ public class Card : MonoBehaviour
         spriteRenderer = GetComponent<SpriteRenderer>();
     }
 
+
+    // setter
     public void SetCardData(CardColor newColor, CardType newType, int newNumber, Sprite newSprite)
     {
         color = newColor;
