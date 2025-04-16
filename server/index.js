@@ -1,21 +1,25 @@
-
+// this one file of a server
+// the rest of the servers have the same code but different port numbers
+// and myIds
 'use strict';
-
+//importing helper libraries
 const http = require('http');
 const socket = require('socket.io');
 const server = http.createServer();
 const { v4: uuidV4 } = require('uuid');
-const port = 3000;
+const port = 3000; // port of leader server
 
-
+//socket connection with ping and pong
 var io = socket(server, {
     pingInterval: 15000,
     pingTimeout: 5000,
     transports: ["websocket"]
 });
 
-const clientNamespace = io.of("/client");
+const clientNamespace = io.of("/client"); // namespace for client separation only for client-server interaction
 
+
+// authentication between client and server
 clientNamespace.use((socket, next) => {
     if (socket.handshake.query.token === "UNITY") {
         next();
@@ -25,57 +29,44 @@ clientNamespace.use((socket, next) => {
 });
 
 
-// const gameObjects = {}; // store game state
+
 const messageQueue = []; // queue to process messages in order
 let isProcessing = false;
 const rooms = new Map();// will store all rooms
 
 clientNamespace.on("connection", (socket) => {
     console.log("A user connected");
-    // const playerName = socket.handshake.query.playerName || "Unknown Player";
-    // console.log(`Player Connected: ${playerName}`);
 
-    socket.emit("welcome", { serverIdFromServer: currentLeader }); //add running
-    // console.log(socket);
-    // console.log(messageQueue);
 
-    socket.on('createRoom', async (data, callback) => {
+    socket.emit("welcome", { serverIdFromServer: currentLeader }); // welcome clients
+
+
+    socket.on('createRoom', async (data, callback) => { // room is created
         messageQueue.push({ socket, action: "createRoom", data, callback });
         processQueue();
 
     });
 
-    socket.on('joinRoom', async (data, callback) => {
+    socket.on('joinRoom', async (data, callback) => { // room is joined
         messageQueue.push({ socket, action: "joinRoom", data, callback });
         processQueue();
     });
 
 
-    //? useless function to test
-    // Add incoming messages to the queue 
-    socket.on("message", (data) => {
-        console.log("yo");
-        // messageQueue.push({ socket, data });
-        processQueue();
-    });
 
-    socket.on("drawCard", (data) => {
+
+    socket.on("drawCard", (data) => { // player draws a card
         // console.log(data)
         messageQueue.push({ socket, action: "drawCard", data });
         processQueue();
     });
 
-    socket.on("sendDeck", (data) => {
+    socket.on("sendDeck", (data) => { // player send deck pile to separate
         // console.log(data)
         messageQueue.push({ socket, action: "sendDeck", data });
         processQueue();
     });
 
-    socket.on("sendPlayerCards", (data) => {
-        // console.log(data)
-        messageQueue.push({ socket, action: "sendPlayerCards", data });
-        processQueue();
-    });
 
     socket.on("sendTopCard", (data) => { //the one card that is on top of the pile
         // console.log(data)
@@ -83,12 +74,12 @@ clientNamespace.on("connection", (socket) => {
         processQueue();
     });
 
-    socket.on("wildcard", (data) => {
+    socket.on("wildcard", (data) => { // when player plays a wildcard
         messageQueue.push({ socket, action: "wildcard", data });
         processQueue();
     })
 
-    socket.on("updateTurnAccess", (data) => {
+    socket.on("updateTurnAccess", (data) => { // when a player's turn is done
         messageQueue.push({ socket, action: "updateTurnAccess", data });
         processQueue();
     })
@@ -96,11 +87,13 @@ clientNamespace.on("connection", (socket) => {
 
 
 
-    socket.on("disconnect", () => {
+    socket.on("disconnect", () => { // when a disconnection happens
         console.log("A user disconnected");
     });
 });
 
+
+// FIFO to make sure a process is handle one at  a time
 async function processQueue() {
     if (isProcessing || messageQueue.length === 0) {
         return;
@@ -120,7 +113,7 @@ async function processQueue() {
             let skip = false;
             let chosenColor = -1;
             rooms.set(roomId, {
-                roomId:roomId,
+                roomId: roomId,
                 players: [{ playerName, socketId: socket.id }], //[player1, player2,  player3]
                 reverse,// for when we need to reverse the order of player \
                 chosenColor,// for when you place a wildcard
@@ -138,10 +131,9 @@ async function processQueue() {
 
         if (action === 'joinRoom') {
             // check if room exists and has a player waiting
-            //console.log(data); //data has the roomId
             const roomId = data;
             console.log("Requested room:", roomId);
-            const room = rooms.get(roomId); 
+            const room = rooms.get(roomId);
             console.log(room);
             const playerName = uuidV4();
             // add the joining user's data to the list of players in the room
@@ -180,9 +172,9 @@ async function processQueue() {
         } else if (action === 'sendTopCard') {
             handleTopCard(socket, data);
             broadcastCardCounts(data.roomId);
-        } else if (action === "wildcard"){
+        } else if (action === "wildcard") {
             handleWildCard(socket, data);
-        } else if (action === "updateTurnAccess"){
+        } else if (action === "updateTurnAccess") {
             handleTurnAccess(socket, data);
             broadcastCardCounts(data.roomId);
         }
@@ -192,61 +184,63 @@ async function processQueue() {
 
     isProcessing = false; // unlock queue processing
 }
-let snapshotActive = false;
-let snapshotState = null;
+
+let snapshotState = null; //snapshot of the system
 
 function captureSnapshotState() {
+    // takes a snapshot of the system
     const allRooms = {};
     rooms.forEach((room, roomId) => {
         allRooms[roomId] = {
-            // roomId: room.roomId,
+            roomId: room.roomId,
             topCard: room.topCard,
             deck: room.deck,
             playerHands: room.playerHands,
-            // chosenColor: room.chosenColor,
-            // players: room.players,
-            // reverse: room.reverse
+            chosenColor: room.chosenColor,
+            players: room.players,
+            reverse: room.reverse
         };
     });
-    return {id: myId,leader: currentLeader,rooms: allRooms};
+    return { id: myId, leader: currentLeader, rooms: allRooms };
 }
 
-// setInterval(() => {
-//     broadcastSnapshotToReplicas();
-// }, 3000)
 
-function broadcastSnapshotToReplicas(){
-    if(myId!==currentLeader) return;
+
+function broadcastSnapshotToReplicas() {
+    // sending to all clieents
+    if (myId !== currentLeader) return;
     snapshotState = captureSnapshotState();
     console.log(`Broadcasting snapshot from Leader server ${myId}`)
-    console.log(JSON.stringify(snapshotState,null,2))
-    for(let[port,link] of links){
-        if(port!=3000){
-            const ioClient = require("socket.io-client")
-            const peerSocket = ioClient(link, { transports: ["websocket"] });
-            peerSocket.on("connect", () => {
-                peerSocket.emit("REPLICA_SNAPSHOT", snapshotState);
-                peerSocket.disconnect();
-            });
-        }
+    console.log(JSON.stringify(snapshotState, null, 2))
+    for (let [port, link] of links) {
+
+        const ioClient = require("socket.io-client")
+        const peerSocket = ioClient(link, { transports: ["websocket"] });
+        peerSocket.on("connect", () => {
+            peerSocket.emit("REPLICA_SNAPSHOT", snapshotState);
+            peerSocket.disconnect();
+        });
+
     }
-    
+
 }
 
-function broadcastCardCounts(roomId){
+function broadcastCardCounts(roomId) {
+    // sending how cards opponent has
     let room = rooms.get(roomId);
     if (!room || !room.playerHands) return;
-    //console.log("HI reached here")
-    let counts ={};
+    
+    let counts = {};
     room.players.forEach(player => {
         counts[player.playerName] = room.playerHands[player.playerName] ? room.playerHands[player.playerName].length : 0;
         clientNamespace.to(roomId).emit("updateCardCounts", counts);
     });
 }
 
-function handleWildCard(socket,data){
+function handleWildCard(socket, data) {
+    // handling of wild cards
+
     const room = rooms.get(data.roomId);
-    // console.log(room);
     const roomUpdate = {
         ...room,
         chosenColor: data.chosenColor
@@ -257,6 +251,8 @@ function handleWildCard(socket,data){
 }
 
 //example handlers for events 
+
+// handling of drawing a card
 function handleDrawCard(socket, data) {
     console.log("Received drawn card:", data);
     const room = rooms.get(data.roomId);
@@ -274,6 +270,8 @@ function handleDrawCard(socket, data) {
     broadcastSnapshotToReplicas();
 }
 
+
+// handling of top card
 function handleTopCard(socket, data) {
     console.log(" top card:", data);
     const room = rooms.get(data.roomId);
@@ -288,12 +286,12 @@ function handleTopCard(socket, data) {
         }
 
         if (data.topCard.includes("Reverse")) {
-            room.reverse = !room.reverse; 
+            room.reverse = !room.reverse;
             console.log(`Reverse card played. Reverse is now: ${room.reverse}`);
         }
 
-         if (data.topCard.includes("Skip")) {
-            room.skip = true; 
+        if (data.topCard.includes("Skip")) {
+            room.skip = true;
             console.log("Skip card played!");
         }
 
@@ -319,6 +317,7 @@ function handleTopCard(socket, data) {
 
 }
 
+// handling sending deck to all clients
 function handleSendDeck(socket, data) {
     console.log("Received deck:", data);
     const room = rooms.get(data.roomId);
@@ -342,14 +341,16 @@ function handleSendDeck(socket, data) {
     for (const player of room.players) {
         // here has to be sockets id
         clientNamespace.to(player.socketId).emit("playerCardsSaved", playerHands[player.playerName]); //find player which has playerId =="Name"  player.socketID
-        
+
     }
     // ! should be broacast to everyone except the host Done Brother
     clientNamespace.to(data.roomId).emit("deckSaved", deck) //send deck to everyone
-    clientNamespace.to(room.players[0].socketId).emit("allowedTurn", "yourturn"); 
+    clientNamespace.to(room.players[0].socketId).emit("allowedTurn", "yourturn");
     broadcastSnapshotToReplicas();
 }
 
+
+// sending player cards to each player
 function handleSendPlayerCards(socket, data) {
     console.log("Received deck:", data);
     // gameObjects["playerHand"] = data;
@@ -357,41 +358,43 @@ function handleSendPlayerCards(socket, data) {
     broadcastSnapshotToReplicas();
 }
 
+
+// determines which player's turn it is
 function handleTurnAccess(socket, data) {
     console.log(data);
     const room = rooms.get(data.roomId);
-    const curr_player=room.players.findIndex((player)=>player.playerName==data.playerName);
+    const curr_player = room.players.findIndex((player) => player.playerName == data.playerName);
     console.log(curr_player);
     const len = room.players.length;
     let nextIndex;
-    if(room.reverse){
+    if (room.reverse) {
         if (len === 2) {
-            nextIndex = curr_player; 
-            room.reverse=false;
+            nextIndex = curr_player;
+            room.reverse = false;
         }
     }
-    else if(room.skip){
+    else if (room.skip) {
         if (len === 2) {
-            nextIndex = curr_player; 
-            room.skip=false;
+            nextIndex = curr_player;
+            room.skip = false;
         }
     }
-    else{
-        if(curr_player === len -1) nextIndex = 0;
+    else {
+        if (curr_player === len - 1) nextIndex = 0;
         else nextIndex = curr_player + 1;
     }
-    
-    
-     console.log("index: ", nextIndex)
-    
-    clientNamespace.to(room.players[nextIndex].socketId).emit("allowedTurn", "yourturn"); 
+
+
+    console.log("index: ", nextIndex)
+
+    clientNamespace.to(room.players[nextIndex].socketId).emit("allowedTurn", "yourturn");
 }
 
 
 
-const ringNamespace = io.of("/ring");
+const ringNamespace = io.of("/ring"); // namespace for server-server connectin
 
-
+// ports and ids of server to map port to next port 
 const servers = [
     { id: 4, port: 3000, next: 3001, nextId: 3 },
     { id: 3, port: 3001, next: 3002, nextId: 2 },
@@ -401,26 +404,20 @@ const servers = [
 ];
 
 const links = new Map();
-
-links.set(3000, `http://localhost:3000/ring`); 
+//links of servers
+links.set(3000, `http://localhost:3000/ring`);
 links.set(3001, `http://localhost:3001/ring`);
 links.set(3002, `http://localhost:3002/ring`);
 links.set(3003, `http://localhost:3003/ring`);
 links.set(3004, `http://localhost:3004/ring`);
 
-//let's improve some math here
-// wanted to use modulo but this does work
-// man use modulo
-//  0 -> 4 -> 3 -> 2 -> 1 -> 0 -> 4
-// for next id  -> (id === 0) ? 4 : id - 1 
-// for next port -> (port === 3004) ? 3000 : port + 1
 
 const myId = 4;
 const myNext = servers.find(s => s.id === myId).next; //next port
 
 
-let currentLeader = 4;
-let running = false;
+let currentLeader = 4; // current leader of system
+let running = false; 
 const ioClient = require("socket.io-client");
 let ringSocket = ioClient(links.get(myNext), {
     transports: ["websocket"]
@@ -478,17 +475,7 @@ ringNamespace.on("connection", (socket) => {
     });
 
 
-    // verifying if all servers are alive
-    socket.on("HEARTBEAT", (data) => {
-        if (data.id === myId) {
-            ringSocket.emit("ALIVE");
-        }
-    });
-
-    // checks if socket connection is still there
-    socket.on("ALIVE", () => {
-        console.log("Leader is alive.");
-    });
+   
 
 });
 
@@ -519,50 +506,7 @@ function announceLeader() {
 
 
 
-//check if server is alive every 5 seconds by sending a heartbeat
-// if it is not the leader
-// assigned leader should be started first
-// setInterval(() => {
-//     // if (myId == currentLeader) {
-//     //     //console.log(`Checking if leader ${currentLeader} is alive...`);
-//     //     ringSocket.emit("HEARTBEAT", { id: currentLeader });
-//     // }
-//     ringSocket.emit("HEARTBEAT", { id: myId });
-// }, 10000);
-
-
-
-
-//any timeout would cause an election
-// setTimeout(() => {
-
-
-//     const server = servers.find(s => s.id === myId);
-
-//     if (server.nextId == currentLeader) {
-//         server.next = ((server.next - 3003) + 1) % 3 + 3000; //update port
-//         server.nextId = (server.nextId - 1) % 4 || 4; //update nextId
-
-//         //start new connection with the next server, ignoring crashed ones
-//         ringSocket = ioClient(`http://localhost:${server.next}/ring`, {
-//             transports: ["websocket"]
-//         });
-//         startElection();
-
-
-//     }
-//     else {
-//         server.next = ((server.next - 3003) + 1) % 3 + 3000; //update port
-//         server.nextId = (server.nextId - 1) % 4 || 4; //update nextId
-//         ringSocket = ioClient(`http://localhost:${server.next}/ring`, {
-//             transports: ["websocket"]
-//         });
-//     }
-
-// }, 10000);
-
-
-
+//preserver all events when socket swaps to new leader or server
 function preserveEventListeners(oldSocket, newSocket) {
     //get all event listeners from the old socket
     const listeners = oldSocket._callbacks || {};
@@ -575,13 +519,14 @@ function preserveEventListeners(oldSocket, newSocket) {
     });
 }
 
-
+// connection to a server
 ringSocket.on("connect", () => {
-    // console.log(`Server ${myId} connected to next server on port ${myNext}`);
+
 });
 
+// disconnection to a server
 ringSocket.on("disconnect", () => {
-    
+
     const server = servers.find(s => s.id === myId);
 
     if (server.nextId == currentLeader) {
@@ -603,13 +548,6 @@ ringSocket.on("disconnect", () => {
 
 
     }
-    // else {
-    //     server.next = ((server.next - 3000) + 1) % 4 + 3000; //update port
-    //     server.nextId = (server.nextId - 1) % 4 || 4; //update nextId
-    //     ringSocket = ioClient(`http://localhost:${server.next}/ring`, {
-    //         transports: ["websocket"]
-    //     });
-    // }
 
 });
 
