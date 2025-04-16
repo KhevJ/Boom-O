@@ -5,58 +5,52 @@ using UnityEditor.Tilemaps;
 using UnityEngine;
 using System.Linq;
 
-
+//manages the game itself 
+// has all the game resources
+// decks, player hands, and table
 public class GameManager : MonoBehaviour
 {
-    public GameObject cardPrefab;
-    public Transform playerCards;
-    public Transform drawPile;
+    public GameObject cardPrefab; // a card
+    public Transform playerCards; // hands of player zone 
+    public Transform drawPile; // deck zone
 
-    private List<Card> deck = new();
-    private Dictionary<string, Sprite> cardSprites;
-    public Sprite cardBackSprite;
+    private List<Card> deck = new(); // deck that will be placed on draw pile
+    private Dictionary<string, Sprite> cardSprites; // images of the front cards
+    public Sprite cardBackSprite; // images of the back of cards
 
     //Used for Game logic
-    public Card topCard;
-    public Transform discardPile;
-    public GameObject colorPickerUI;
+    public Card topCard; // the top card of the table
+    public Transform discardPile; // table zone to place cards
+    public GameObject colorPickerUI; // to chose a color when a wild card is placed (+4 card or multi color card)
 
-    public Transform opponentCards;
-
-
-    public List<KeyValuePair<string, GameObject>> UNODeckList = new();
+    public Transform opponentCards; // the card of the opponents
 
 
+    public List<KeyValuePair<string, GameObject>> UNODeckList = new(); // list to store object references of all cards in the game
+
+
+    // when the actual game starts where the players have joined
     void Start()
     {
-        StartCoroutine(InitializeGame());
+        StartCoroutine(InitializeGame()); // makes sure all the connections are setup such as the websockets
     }
 
-    // void OnEnable() {
-    //     Debug.Log("GameManager enabled");
-    //     if (WebSocketManager.Instance != null)
-    //         WebSocketManager.Instance.OnCardCountsUpdated += UpdateOpponentHandUI;
-    //         if (WebSocketManager.Instance.CardCounts != null)
-    //         {
-    //             UpdateOpponentHandUI(WebSocketManager.Instance.CardCounts);
-    //         }       
-    // }
-
+   
     IEnumerator InitializeGame()
     {
-        // yield return StartCoroutine(InitializeWebSocketCoroutine()); // wait for connection
+        // wait for connection
         while (WebSocketManager.Instance == null || !WebSocketManager.Instance.connected || string.IsNullOrEmpty(WebSocketManager.Instance.roomId))
         {
             yield return null; // wait till connection is made
         }
-        LoadCardSprites();
-        InitializeDeck();
+        LoadCardSprites(); // loads all the card images
+        InitializeDeck(); 
 
-        //room creator does this
+        //room creator only  does this
         if (WebSocketManager.Instance.host)
         {
-            //InitializeDeck(); // should be when firt client joins
-            ShuffleDeck(); // should be when firt client joins
+            
+            ShuffleDeck(); // shuffles the deck
             DealCards(); //edited that for top card only
             SendDeck();
         }
@@ -107,53 +101,17 @@ public class GameManager : MonoBehaviour
 
 
         }
-        // GameObject card = null;
-        // int j = 0;
-        // foreach (var pair in UNODeckList)
-        // {
-        //     if (pair.Key == "Red_0")
-        //     {
-
-        //         card= pair.Value;
-        //         Debug.Log("j=" + j);
-
-        //         break;
-        //     }
-        //     j++;
-        // }
-        // Debug.Log(UNODeckList[j].Value.GetComponent<Card>().number);
-        Debug.Log("Before play cards" + UNODeckList.Count);
+    
+        
         ConvertStringToPlayerCards(WebSocketManager.Instance.playerCards);
-        Debug.Log("After play cards" + UNODeckList.Count);
-        ConvertStringToDeckCards(WebSocketManager.Instance.deck);
-        Debug.Log("After deck" + UNODeckList.Count);
-
-
-
-
-
-
-
-
-
-        // UpdateDrawPile();
-        // UpdatePlayerCard();
-
-        // DealCards();
-        // host sends top card and shuffled deck
-
-        // Deal Cards() include sending top card to server
-
-        // SendDeck(); // should be when first client joins
-        // find a way to set deck when other clients join
-        // SendPlayerCards();
+        
+        ConvertStringToDeckCards(WebSocketManager.Instance.deck); 
+        
     }
 
-    public void TestButton()
-    {
-        Debug.Log("Button Clicked!");
-    }
+ 
 
+    // converts objects of card to string names to send to the backend
     public List<string> ConvertCardstoString(List<Card> cards)
     {
         List<string> string_cards = new();
@@ -164,7 +122,12 @@ public class GameManager : MonoBehaviour
         }
         return string_cards;
 
+
     }
+
+    /// <summary>
+    /// function to send the deck to the backend 
+    /// </summary>
     void SendDeck()
     {
 
@@ -178,6 +141,10 @@ public class GameManager : MonoBehaviour
     }
 
 
+    /// <summary>
+    /// to update opposing player hands
+    /// </summary>
+    /// <param name="counts">number fo card a player has</param>
     public void UpdateOpponentHandUI(Dictionary<string, int> counts){
         if(counts==null) return;
 
@@ -212,25 +179,9 @@ public class GameManager : MonoBehaviour
 
 
 
-    void SendPlayerCards()
-    {
-
-        List<string> cards = new List<string>();
-
-        foreach (Transform cardTransform in playerCards)
-        {
-            Card cardScript = cardTransform.GetComponent<Card>();
-            if (cardScript != null)
-            {
-                string spriteName = GetSpriteName(cardScript.color, cardScript.type, cardScript.number);
-                cards.Add(spriteName);
-            }
-        }
-
-
-        WebSocketManager.Instance.SendData("sendPlayerCards", cards);
-    }
-
+    /// <summary>
+    /// loading front or back card images for each card object
+    /// </summary>
     void LoadCardSprites()
     {
         cardSprites = new Dictionary<string, Sprite>();
@@ -243,6 +194,14 @@ public class GameManager : MonoBehaviour
         }
     }
 
+
+    /// <summary>
+    /// deck is initialized and card is added to deck
+    /// all cards are added to deck intially
+    /// only the host does this
+    /// the deck is then spliced so that each player gets 7 cards
+    /// then the rest is sent to all the players which would be the deck
+    /// </summary>
     void InitializeDeck()
     {
         Card.CardColor[] colors = { Card.CardColor.Red, Card.CardColor.Blue, Card.CardColor.Green, Card.CardColor.Yellow };
@@ -271,6 +230,13 @@ public class GameManager : MonoBehaviour
         }
     }
 
+
+    /// <summary>
+    /// add a card object to deck object
+    /// </summary>
+    /// <param name="color">color of card</param>
+    /// <param name="type">type of card</param>
+    /// <param name="number">number of card</param>
     void AddCardToDeck(Card.CardColor color, Card.CardType type, int number)
     {
         GameObject cardObject = Instantiate(cardPrefab);
@@ -286,6 +252,9 @@ public class GameManager : MonoBehaviour
 
     }
 
+    /// <summary>
+    /// shuffle the deck in a randomly fashion
+    /// </summary>
     void ShuffleDeck()
     {
         for (int i = 0; i < deck.Count; i++)
@@ -295,15 +264,12 @@ public class GameManager : MonoBehaviour
         }
     }
 
+
+    /// <summary>
+    /// only the host will send the deck to backend to make all card are dealt appropriatley 
+    /// </summary>
     void DealCards()
     {
-
-        float spacing = 0.3f;
-        float startX = -((7 - 1) * spacing) / 2;
-
-        // Set the first card in discard pile
-        //topCard = deck[0];
-        //deck.RemoveAt(0);
 
         int index = 0;
         while (index < deck.Count && (deck[index].type != Card.CardType.Number))
@@ -311,8 +277,7 @@ public class GameManager : MonoBehaviour
             index++; // Skip special cards
         }
 
-        //Note: change this Khevin so that only host does this.
-        // If we found a valid number card, set it as topCard
+      
         if (index < deck.Count)
         {
             topCard = deck[index];
@@ -348,44 +313,22 @@ public class GameManager : MonoBehaviour
             return; // Prevents further execution if there's an issue
         }
 
-        //if (topCard == null)
-        //{
-        //    Debug.LogError("Error: The first card in the deck is null.");
-        //    return; // Prevents further execution if there's an issue
-        //}
+        
         topCard.transform.SetParent(discardPile);
         topCard.transform.localPosition = Vector3.zero;
         topCard.gameObject.SetActive(true);
-        // for (int i = 0; i < 7; i++)
-        // {
-        //     Card card = deck[0];
-        //     deck.RemoveAt(0);
-        //     card.transform.SetParent(playerCards);
-        //     card.transform.localPosition = new Vector3(startX + (i * spacing), 0, 0);
-        //     SpriteRenderer spriteRenderer = card.GetComponent<SpriteRenderer>();
-        //     if (spriteRenderer != null)
-        //     {
-        //         spriteRenderer.sortingOrder = i; // Leftmost = lowest order, Rightmost = highest
-        //     }
-        //     card.gameObject.SetActive(true);
-        // }
-
-        // for (int i = 0; i < deck.Count; i++)
-        // {
-        //     Card card = deck[i];
-        //     card.transform.SetParent(drawPile);
-        //     card.transform.localPosition = Vector3.zero;
-        //     SpriteRenderer spriteRenderer = card.GetComponent<SpriteRenderer>();
-        //     if (spriteRenderer != null)
-        //     {
-        //         spriteRenderer.sprite = cardBackSprite;
-        //         spriteRenderer.sortingOrder = i;
-        //     }
-        //     card.gameObject.SetActive(true);
-        // }
 
     }
 
+
+    /// <summary>
+    /// get the string name of a card based on its attributes
+    /// useful for sending to backend
+    /// </summary>
+    /// <param name="color"></param>
+    /// <param name="type"></param>
+    /// <param name="number"></param>
+    /// <returns>string of card name</returns>
     public string GetSpriteName(Card.CardColor color, Card.CardType type, int number)
     {
         if (color == Card.CardColor.Wild)
@@ -403,6 +346,9 @@ public class GameManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// realigns cards based when player draw a card so that if it fits the handzone
+    /// </summary>
     public void RealignPlayerCards()
     {
         int cardCount = playerCards.childCount;
@@ -424,6 +370,10 @@ public class GameManager : MonoBehaviour
             }
         }
     }
+
+    /// <summary>
+    /// function to initiate a draw from the deck
+    /// </summary>
 
     public void DrawCard()
     {
@@ -479,7 +429,12 @@ public class GameManager : MonoBehaviour
         }
     }
 
-    //Game Logic
+
+    /// <summary>
+    /// will check if we can place a card on the discard pile 
+    /// </summary>
+    /// <param name="card">card object</param>
+    /// <returns>bool</returns>
     public bool CanPlaceCard(Card card)
     {
         Debug.Log($"Checking card placement: {card.color} {card.type} on {topCard.color} {topCard.type}");
@@ -510,11 +465,20 @@ public class GameManager : MonoBehaviour
         return validColorMatch;
     }
 
+
+    /// <summary>
+    /// setter function to update the top card
+    /// </summary>
+    /// <param name="newTopCard"></param>
     public void UpdateTopCard(Card newTopCard)
     {
         topCard = newTopCard;
     }
 
+
+    /// <summary>
+    /// will update the wild card color when a multi color card is selected and player made his color choice
+    /// </summary>
     public void ChooseRed() { SetWildColor(Card.CardColor.Red); }
     public void ChooseBlue() { SetWildColor(Card.CardColor.Blue); }
     public void ChooseGreen() { SetWildColor(Card.CardColor.Green); }
@@ -545,31 +509,24 @@ public class GameManager : MonoBehaviour
 
 
 
+
+    /// <summary>
+    /// will check if backend has made any changes every frame
+    /// </summary>
     void Update()
     {
+        // opponent hand counts
         if (WebSocketManager.Instance.CardCounts != null)
             UpdateOpponentHandUI(WebSocketManager.Instance.CardCounts);
 
+        //if top card is updated from other player
         if (WebSocketManager.Instance.updateTopCard && !string.IsNullOrEmpty(WebSocketManager.Instance.topCard) && topCard != null)
         {
-            //if (WebSocketManager.Instance.topCard != GetSpriteName(topCard.color, topCard.type, topCard.number))
-            //{
+
             string cardName = WebSocketManager.Instance.topCard;
-            //this.topCard shoudl become what the WebSocketManager is
-            // there is bound to be 1 card type in  UNODeckist
-            // we need to choose a card that is not in deck
-
-
-            // or else deck gets cut down by 1 card
-            // if you remove the card from UNODeckList when making the deck then you can use UNODeckList
-            // wait if you remvove the card from UNODeckList how are you gonna implement placing cards
-            // oh I see I can add to UNODeckList whenever other player draws yeah that solves a lot
-            // am I missing something
-            // drawing , placing should be taken care of by this strat 
-            // oh i am missing how to rebuild everyhtin when server goes down
-            // yeah replication is gonna be wild
-            // ok let's just try to make it work
-            // need to sleep I do not want to sleep at 8 am again
+          
+            
+        
             GameObject cardObject = null;
             int i = 0;
             foreach (var pair in UNODeckList)
@@ -603,7 +560,7 @@ public class GameManager : MonoBehaviour
 
             UNODeckList.RemoveAt(i);
             WebSocketManager.Instance.updateTopCard = false;
-            //}
+         
 
         }
 
@@ -614,17 +571,16 @@ public class GameManager : MonoBehaviour
         // this is to be differentiated since the deck need to update when drawing
         // deck should be updated for everyone except sender(the one who draws)
         // Sender:
-        // when a card is drawn, card is added to playerCards Done
-        // player cards for sender in backend needs to be updated Done
-        // deck needs to pop at the beginning Done
-        // should not that different from what we have hopefully
+        // when a card is drawn, card is added to playerCards 
+        // player cards for sender in backend needs to be updated 
+        // deck needs to pop at the beginning
         // Other players:
-        // when a card is drawn, each of their decks need to pop at the beginning Done
-        // remove from draw pile Done
-        // you can also show the front card before setting it to inactive Done
-        // set active to false Done
-        // append the top card to UNODeckList --> Really important Do not forget Done
-        // this should be it 
+        // when a card is drawn, each of their decks need to pop at the beginning 
+        // remove from draw pile
+        // you can also show the front card before setting it to inactive 
+        // set active to false 
+        // append the top card to UNODeckList
+        
         if (WebSocketManager.Instance.updateDeck && deck != null)
         {
 
@@ -657,6 +613,8 @@ public class GameManager : MonoBehaviour
 
         }
 
+
+        // if a wildcard is placed by other players and what color they chose
         if (WebSocketManager.Instance.wildcardPlaced && topCard != null)
         {
             // Debug.Log((Card.CardColor)WebSocketManager.Instance.wildcardColor);
@@ -667,35 +625,13 @@ public class GameManager : MonoBehaviour
         }
 
 
-
-
-
-
-
-
-
-
-
-        //implement same deck across all users
-        //this one is gonna be hard man
-        //why am I doing this
-        // Host sends deck to backend 
-        // backend assigns player cards to all players
-        // top card on UI should be fine Double check that 
-        // each one will receive their player cards
-        // deck is stored and sent to all players
-        // deck of string cards need to get converted to cards
-        // playerCards of string cards need to get converted to cards
-
-
-
-        //implement turn based feature
-        // do that after synchronizing deck
-
-
     }
 
 
+    /// <summary>
+    /// from list of strings from the backend to list of card objects for player cards
+    /// </summary>
+    /// <param name="cardNames"></param>
     public void ConvertStringToPlayerCards(List<string> cardNames)
     {
         float spacing = 0.3f;
@@ -749,6 +685,10 @@ public class GameManager : MonoBehaviour
 
     }
 
+    /// <summary>
+    /// from list of strings from the backend to list of card objects for deck
+    /// </summary>
+    /// <param name="cardNames"></param>
     public void ConvertStringToDeckCards(List<string> cardNames)
     {
         // List<KeyValuePair<string, GameObject>> shallowDeckListCopy = UNODeckList.ToList();
@@ -802,49 +742,7 @@ public class GameManager : MonoBehaviour
 
     }
 
-    // public void UpdatePlayerCard()
-    // {
-    //     float spacing = 0.3f;
-    //     float startX = -((7 - 1) * spacing) / 2;
-    //     for (int i = 0; i < 7; i++)
-    //     {
-    //         Card card = deck[0];
-    //         deck.RemoveAt(0);
-    //         card.transform.SetParent(playerCards);
-    //         card.transform.localPosition = new Vector3(startX + (i * spacing), 0, 0);
-    //         SpriteRenderer spriteRenderer = card.GetComponent<SpriteRenderer>();
-    //         if (spriteRenderer != null)
-    //         {
-    //             spriteRenderer.sortingOrder = i; // Leftmost = lowest order, Rightmost = highest
-    //         }
-    //         card.gameObject.SetActive(true);
-
-    //     }
-    // }
-
-    // public void UpdateDeck()
-    // {
-    //     for (int i = 0; i < deck.Count; i++)
-    //     {
-    //         Card card = deck[i];
-    //         card.transform.SetParent(drawPile);
-    //         card.transform.localPosition = Vector3.zero;
-    //         SpriteRenderer spriteRenderer = card.GetComponent<SpriteRenderer>();
-    //         if (spriteRenderer != null)
-    //         {
-    //             spriteRenderer.sprite = cardBackSprite;
-    //             spriteRenderer.sortingOrder = i;
-    //         }
-    //         card.gameObject.SetActive(true);
-    //     }
-    // }
 
 
-
-    private void OnApplicationQuit()
-    {
-
-
-    }
-
+    
 }
