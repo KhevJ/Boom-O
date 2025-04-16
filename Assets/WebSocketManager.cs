@@ -6,25 +6,28 @@ using UnityEngine;
 using Newtonsoft.Json.Linq;
 using System.Collections.Specialized;
 
-
+/// <summary>
+/// our websocket logic
+/// made as a singleton
+/// </summary>
 public class WebSocketManager : MonoBehaviour
 {
-    private static WebSocketManager instance;
-    public static WebSocketManager Instance => instance;
+    private static WebSocketManager instance; // singleton instance  
+    public static WebSocketManager Instance => instance; // attribute to get instance
 
-    private SocketIOUnity socket;
-    public bool connected = false;
+    private SocketIOUnity socket; // the socket
+    public bool connected = false; // check if initial connection is set up properly
 
-    public int roomLength = 0;
-    public bool host = false;
+    public int roomLength = 0; // number of players in  the room
+    public bool host = false; // if you are the room creator or not
 
-    public string roomId;
+    public string roomId; // id of room created or joined
 
-    public string playerName;
+    public string playerName; // name of player
 
-    public string topCard;
+    public string topCard; // discard pile card /top card of table
 
-    public bool updateTopCard = false;
+    public bool updateTopCard = false; // if we need to update top card
 
     public bool updateDeck = false; // when card is drawn
 
@@ -32,30 +35,31 @@ public class WebSocketManager : MonoBehaviour
 
     public bool wildcardPlaced = false; // when wilcard everyone needs to know the color
 
-    public bool allowedTurn = false;
+    public bool allowedTurn = false; // if it is player's turn
 
     public List<string> deck;
 
     public List<string> playerCards;
     private string serverUrl = "http://localhost:3000/client";
-    private Dictionary<int, string> serverDictionary = new()
+    private Dictionary<int, string> serverDictionary = new() 
     {
-        { 4, "http://localhost:3000/client" }, //Khevin's Server
+        { 4, "http://localhost:3000/client" }, 
         { 3, "http://localhost:3001/client" },
         { 2, "http://localhost:3002/client" },
         { 1, "http://localhost:3003/client" },
         { 0, "http://localhost:3004/client" }
-    };
+    }; // list of backend servers
 
    
-    private int currentServerId = 4;
+    private int currentServerId = 4; // initial leader server 
 
     public Dictionary<string,int> CardCounts;
-    //public event Action<Dictionary<string, int>> OnCardCountsUpdated;
+    
 
+   // when class is instantiated
     void Awake()
     {
-        //Debug.Log("Hello from WebSocketManager");
+        
         if (instance == null)
         {
             instance = this;
@@ -71,6 +75,11 @@ public class WebSocketManager : MonoBehaviour
         InitializeSocketIO(serverUrl);
     }
 
+
+    /// <summary>
+    /// initialize the sockets with socket client endpoints
+    /// </summary>
+    /// <param name="url"></param>
     void InitializeSocketIO(string url)
     {
         serverUrl = url;
@@ -96,45 +105,35 @@ public class WebSocketManager : MonoBehaviour
             connected = true;
             Debug.Log("socket.OnConnected" + e);
         };
+
+        //receives a ping
         socket.OnPing += (sender, e) =>
         {
-            //Debug.Log("Ping");
+            //Debug.Log("Ping"); 
         };
+
+        //receives a pong
         socket.OnPong += (sender, e) =>
         {
             //Debug.Log("Pong: " + e.TotalMilliseconds);
         };
+
+        // when no pong is received
         socket.OnDisconnected += (sender, e) =>
         {
             Debug.Log("disconnect: " + e);
             //socket = null;
             SwapServer();
 
-            //swap server
-            //socket = null;
-            // have global variable in WebsocketManager called serverId(4,3,2,1)
-            // set that value to 3 say 4 crashed just decrementing
-            // have a dictionary/ hash map that will hash the server id to the url
-            // 
-            // swapServer();
+            
 
         };
-        // socket.OnReconnectAttempt += (sender, e) =>
-        // {
-        //     Debug.Log($"{DateTime.Now} Reconnecting: attempt = {e}");
-        // };
+        
 
 
-
+        // when a backend connection is made to acknowledge connection
         socket.On("welcome", (response) =>
-        //return currentServerId that will get from server
-        // global var serverId from client (3) == currentId from server(2)
-        // do the swap again
-        // what if we have a controller
-        // there is like a socket in between client and server
-        // when there is a disconnection , socket becomes null
-        // we can't talk to anyone
-
+        
         {
             int serverIdFromServer = response.GetValue<int>();
             
@@ -157,13 +156,16 @@ public class WebSocketManager : MonoBehaviour
             Debug.Log("Switched to new leader. Server id from welcome: " + currentServerId);
         });
 
+
+        // when other player have drawn card , backend will tell you to update the deck
         socket.On("drawnCard", (response) =>
         {
             Debug.Log(response.GetValue<string>());
             updateDeck = true;
-            // Debug.Log("Server responded: Card drawn successfully!");
+           
         });
 
+         // when cards have been distributed across all players and the remaining cards is sent
         socket.On("deckSaved", (response) =>
         {
 
@@ -171,17 +173,19 @@ public class WebSocketManager : MonoBehaviour
             Debug.Log("Server responded: Deck saved successfully! " + deck.Count);
         });
 
+        // when you receive your hands
         socket.On("playerCardsSaved", (response) =>
         {
 
             playerCards = response.GetValue<List<string>>();
             Debug.Log("Server responded: Play Cards saved successfully! " + playerCards.Count);
-            // Debug.Log("Server responded: Player cards saved successfully!");
+           
         });
 
+        // when other places a card on table
         socket.On("topCardUpdate", (response) =>
         {
-            //Debug.Log(response.GetValue<string>());
+            
 
 
             //trigger the update 
@@ -192,6 +196,7 @@ public class WebSocketManager : MonoBehaviour
             Debug.Log("Server responded: Top card saved successfully! " + topCard);
         });
 
+        // to know if all players have joined the room
         socket.On("roomLength", (response) =>
         {
 
@@ -199,21 +204,25 @@ public class WebSocketManager : MonoBehaviour
             roomLength = response.GetValue<int>();
 
 
-            // Debug.Log("Server responded: Player cards saved successfully!");
+           
         });
 
 
+        // when other players have played a wildcard, you need to know the color
         socket.On("wildcardColor", (response) => {
             wildcardColor = response.GetValue<int>();
             wildcardPlaced = true;
             Debug.Log(wildcardColor);
         });
 
+        // when it is your turn to play
         socket.On("allowedTurn", (response) => {
             allowedTurn = true;
             Debug.Log("Hi from allowedTurn");
         });
 
+
+        // to get other player's hand
         socket.On("updateCardCounts", (response) =>{
             CardCounts = response.GetValue<Dictionary<string, int>>();
             Debug.Log("Received updated card counts");
@@ -225,6 +234,10 @@ public class WebSocketManager : MonoBehaviour
         
     }
 
+
+    /// <summary>
+    /// code to swap server when leader dies
+    /// </summary>
     private void SwapServer()
     {
         int nextServerId = GetNextServerId(currentServerId);
@@ -240,6 +253,11 @@ public class WebSocketManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    ///  get the next server id
+    /// </summary>
+    /// <param name="current"></param>
+    /// <returns></returns>
     private int GetNextServerId(int current)
     {
         int next = current - 1;
@@ -248,6 +266,12 @@ public class WebSocketManager : MonoBehaviour
         return next;
     }
 
+
+    /// <summary>
+    /// universal function to send data containing action and data whether string, int or object
+    /// </summary>
+    /// <param name="action"></param>
+    /// <param name="data"></param>
     public void SendData(string action, object data)
     {
 
@@ -261,6 +285,8 @@ public class WebSocketManager : MonoBehaviour
         }
     }
 
+    
+    // send to backend create room selection with room id
     public async void CreateRoom(string roomID)
     {
         await socket.EmitAsync("createRoom", response =>
@@ -283,7 +309,7 @@ public class WebSocketManager : MonoBehaviour
     }
 
     
-
+    // send to backend join room selection with room id
     public async void JoinRoom(string roomID)
     {
 
@@ -306,6 +332,7 @@ public class WebSocketManager : MonoBehaviour
 
 
 
+    // when application is closed , close the sockets
     private void OnApplicationQuit()
     {
         if (socket != null)
@@ -314,46 +341,4 @@ public class WebSocketManager : MonoBehaviour
         }
     }
 }
-
-
-//public int serverId = -1; 
-//public HashMap<int id, string url>
-
-
-//Pseudocode for reconnection
-
-//? welcome for socket socket.On("Welcome")
-// ! if the serverId in welcome is -1  you just set the serverId to what the id the server sent
-
-// ring algo did not announce the new leader to 3 yet
-// and we are connecting to 3 on client
-// 3 won't have the updated currentleader which wil be 4
-// id from the server will be 4
-// global var that will have be 4
-// 4(serverId from client) == 4(currentLeader) a recursion till the id is different and not -1
-// ! if the id(4) is the same as the one(4)(serverId -> client variable) that crashes do it recursively till the id is different
-// if serverId is not -1 and diffent , then you call the swapServer  function again
-
-
-
-// if there is an error do that maybe
-//socket.onDisconnect{
-//  socket = null;
-//  swapServer();
-//}
-
-// swapServer(){
-// 
-//  InitializeSocket(int id);
-//  serverId
-// }
-
-// oh i see what you can do now,
-// on connection have a temporary varialbe
-
-// if the leader crashes,
-// ring algo starts
-// if the ring is not done yet, the id that will sent to the client is not gonna be updated to the new value  of the new leader
-// it is still gonna be crashed leader's id
-// the UI is also gonna know 
 
