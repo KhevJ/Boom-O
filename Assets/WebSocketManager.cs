@@ -135,6 +135,18 @@ public class WebSocketManager : MonoBehaviour
         socket.On("welcome", (response) =>
         
         {
+             var data = new Dictionary<string, object>
+                {
+                    { "roomId", roomId },
+                    { "playerName", playerName }
+                };
+
+            Debug.Log("currnet server id " + currentServerId);
+            if(currentServerId != -1   && currentServerId != 4){
+
+                WelcomeBack(data);
+            }
+            
             int serverIdFromServer = response.GetValue<int>();
             
             if (currentServerId == -1)
@@ -265,6 +277,26 @@ public class WebSocketManager : MonoBehaviour
             next = 4; // wrap-around to highest id
         return next;
     }
+
+
+     public async void WelcomeBack(object data)
+    {
+        Debug.Log("In welcome back");
+        await socket.EmitAsync("welcomeBack", response =>
+        {
+            if (response.Count > 0)
+            {
+                
+                
+            }
+            else
+            {
+                Debug.LogWarning("No roomId received from server!");
+
+            }
+        }, data);
+    }
+
 
 
     /// <summary>

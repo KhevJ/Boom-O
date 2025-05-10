@@ -53,6 +53,31 @@ clientNamespace.on("connection", (socket) => {
   });
 
 
+  socket.on("welcomeBack", async (data, callback) => {
+    console.log("We are here")
+    const roomData = rooms.get(data.roomId);
+    console.log(roomData);
+    if (!roomData) {
+      console.log(`Room ${data.roomId} not found.`);
+
+    }
+
+    const player = roomData["players"].find(p => p.playerName === data.playerName);
+    if (player) {
+      player.socketId = socket.id;
+      await socket.join(data.roomId);
+      console.log(`Updated socketId for ${data.playerName} in room ${data.roomId}`);
+
+    } else {
+      console.log(`Player ${data.playerName} not found in room ${data.roomId}`);
+
+    }
+    callback(data.roomId);
+
+  })
+
+
+
 
 
   socket.on("drawCard", (data) => { // player draws a card
@@ -175,7 +200,7 @@ async function processQueue() {
     } else if (action === "wildcard") {
       handleWildCard(socket, data);
     } else if (action === "updateTurnAccess") {
-      handleTurnAccess(socket, data);
+      handleTurnAccess(data);
       broadcastCardCounts(data.roomId);
     }
 
@@ -215,12 +240,12 @@ function broadcastSnapshotToReplicas() {
   // console.log(JSON.stringify(snapshotState,null,2))
   for (let [port, link] of links) {
 
-      const ioClient = require("socket.io-client")
-      const peerSocket = ioClient(link, { transports: ["websocket"] });
-      peerSocket.on("connect", () => {
-          peerSocket.emit("REPLICA_SNAPSHOT", snapshotState);
-          peerSocket.disconnect();
-      });
+    const ioClient = require("socket.io-client")
+    const peerSocket = ioClient(link, { transports: ["websocket"] });
+    peerSocket.on("connect", () => {
+      peerSocket.emit("REPLICA_SNAPSHOT", snapshotState);
+      peerSocket.disconnect();
+    });
   }
 }
 
@@ -351,17 +376,11 @@ function handleSendDeck(socket, data) {
 }
 
 
-// sending player cards to each player
-function handleSendPlayerCards(socket, data) {
-  console.log("Received deck:", data);
-  // gameObjects["playerHand"] = data;
-  socket.emit('playerCardsSaved', "Server said why play UNO when Yugioh exists");
-  broadcastSnapshotToReplicas();
-}
+
 
 
 // determines which player's turn it is
-function handleTurnAccess(socket, data) {
+function handleTurnAccess(data) {
   console.log(data);
   const room = rooms.get(data.roomId);
   const curr_player = room.players.findIndex((player) => player.playerName == data.playerName);
