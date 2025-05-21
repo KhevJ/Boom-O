@@ -1,4 +1,4 @@
-# 💣 Boom-O: Distributed Multiplayer UNO Game
+#  Boom-O: Distributed Multiplayer UNO Game
 
 Boom-O is a distributed multiplayer UNO game developed using Unity and C#. This project integrates key concepts from distributed systems, including:
 
@@ -9,14 +9,14 @@ Boom-O is a distributed multiplayer UNO game developed using Unity and C#. This 
 - **Socket.IO Communication**
 - **Synchronization Across Servers and Clients**
 
-## 🧩 Features
+## Features
 
 - **Multiplayer Gameplay**: Engage in UNO matches with multiple players across different devices.
 - **Distributed Architecture**: Ensures game state consistency and fault tolerance through passive replication and leader election mechanisms.
 - **Real-time Communication**: Utilizes Socket.IO for seamless real-time interactions between clients and servers.
 - **Server Synchronization**: Maintains synchronized game data across multiple servers to enhance reliability and performance.
 
-## 🛠️ Technologies Used
+## Technologies Used
 
 - **Unity**: Game development platform.
 - **C#**: Primary programming language.
